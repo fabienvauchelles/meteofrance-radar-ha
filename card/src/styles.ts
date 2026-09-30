@@ -18,6 +18,22 @@ export const cardStyles = css`
   ha-card.fill > * {
     flex: none;
   }
+  :host([panel]) {
+    height: auto;
+  }
+  /* Alone in a panel view: never taller than the viewport under the HA header. The
+     stage is the only flex item allowed to shrink, so the controls stay visible. */
+  ha-card.panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(
+      100dvh - var(--header-height, 56px) - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+  ha-card.panel > * {
+    flex: none;
+  }
   .title {
     display: flex;
     flex-wrap: wrap;
@@ -70,7 +86,16 @@ export const cardStyles = css`
     align-items: center;
     justify-content: center;
   }
-  ha-card.fill .map {
+  ha-card.panel .stage {
+    flex: 0 1 auto;
+    min-height: 0;
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  ha-card.fill .map,
+  ha-card.panel .map {
     width: min(100cqw, calc(100cqh * var(--map-aspect, 16 / 9)));
     height: auto;
     aspect-ratio: var(--map-aspect, 16 / 9);

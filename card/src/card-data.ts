@@ -45,6 +45,7 @@ export interface ViewInput {
   stepCount: number;
   period: PeriodName;
   fill: boolean;
+  panel: boolean;
 }
 
 export function buildViewModel(input: ViewInput): ViewModel {
@@ -60,7 +61,9 @@ export function buildViewModel(input: ViewInput): ViewModel {
     gapMin: frame?.gap_before_min ?? 0,
     leadMin: frame?.forecast ? (frame.lead_min ?? 0) : null,
     nowPct: ready ? nowPercent(input.playlist) : null,
-    fill: input.fill,
+    // A panel view bounds the card by the viewport, which replaces the grid rows.
+    fill: input.fill && !input.panel,
+    panel: input.panel,
     playing: input.playing,
     waiting: input.waiting,
     position: input.position,

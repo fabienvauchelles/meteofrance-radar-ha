@@ -1,4 +1,4 @@
-import { html, LitElement, type TemplateResult } from "lit";
+import { html, type TemplateResult } from "lit";
 import { createRef } from "lit/directives/ref.js";
 import { RadarApi } from "./api";
 import {
@@ -6,19 +6,15 @@ import {
   buildViewModel,
   DEFAULT_HEIGHT,
   DEFAULT_WIDTH,
-  GRID_OPTIONS,
-  type GridOptions,
   languageTag,
   wantsFill,
 } from "./card-data";
+import { RadarCardHost } from "./card-host";
 import { Compositor } from "./compositor";
 import { type CardConfig, DEFAULTS, type ResolvedConfig, validateConfig } from "./config";
-import { EDITOR_TAG, stubConfig } from "./editor";
-import { ensureHaForm } from "./ha-form-loader";
 import { LayerLoader } from "./loader";
 import { Playback } from "./playback";
 import { buildPlaylist, EMPTY_PLAYLIST, type Playlist, restingIndex } from "./playlist";
-import { cardStyles } from "./styles";
 import { buildSteps, findFrame, type Step, stepUrls, titleFrame } from "./timeline";
 import {
   browserSeams,
@@ -31,9 +27,7 @@ import { type LoadState, renderCard } from "./view";
 
 export const REFRESH_MS = 60_000;
 
-export class MeteoFranceRadarCard extends LitElement {
-  static styles = cardStyles;
-
+export class MeteoFranceRadarCard extends RadarCardHost {
   /** Browser services; tests replace them before the card is connected. */
   seams: CardSeams = browserSeams();
 
@@ -71,15 +65,6 @@ export class MeteoFranceRadarCard extends LitElement {
     },
   );
 
-  static async getConfigElement(): Promise<HTMLElement> {
-    await ensureHaForm();
-    return document.createElement(EDITOR_TAG);
-  }
-
-  static getStubConfig(): Partial<CardConfig> {
-    return stubConfig();
-  }
-
   setConfig(config: CardConfig): void {
     const resolved = validateConfig(config);
     const periodChanged = this._config?.default_period !== resolved.default_period;
@@ -109,14 +94,6 @@ export class MeteoFranceRadarCard extends LitElement {
     return this._hass;
   }
 
-  getCardSize(): number {
-    return 7;
-  }
-
-  getGridOptions(): GridOptions {
-    return { ...GRID_OPTIONS };
-  }
-
   connectedCallback(): void {
     super.connectedCallback();
     this._refreshTimer = window.setInterval(() => void this._refresh(), REFRESH_MS);
@@ -139,11 +116,10 @@ export class MeteoFranceRadarCard extends LitElement {
     if (!canvas) return;
     const width = this._data?.grid.width ?? DEFAULT_WIDTH;
     const height = this._data?.grid.height ?? DEFAULT_HEIGHT;
-    if (!this._compositor?.matches(canvas, width, height)) {
-      this._compositor = new Compositor(canvas, width, height, this.seams.context2d);
-      this._compositor.setBasemap(this._basemap.bitmap);
-      this._compositor.drawBasemap();
-    }
+    if (this._compositor?.matches(canvas, width, height)) return;
+    this._compositor = new Compositor(canvas, width, height, this.seams.context2d);
+    this._compositor.setBasemap(this._basemap.bitmap);
+    this._compositor.drawBasemap();
   }
 
   render(): TemplateResult {
@@ -161,6 +137,7 @@ export class MeteoFranceRadarCard extends LitElement {
       stepCount: this._steps.length,
       period: this._period,
       fill: this._fill,
+      panel: this.panel,
     });
     return renderCard(vm, {
       canvasRef: this._canvasRef,

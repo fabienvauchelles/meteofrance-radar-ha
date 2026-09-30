@@ -1,17 +1,20 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CardConfig } from "../src/config";
 import { cardStyles } from "../src/styles";
-import { makeFrames, makeHass, makeResponse, mountCard, query, TAG } from "./harness";
+import { type Card, makeFrames, makeHass, makeResponse, mountCard, query, TAG } from "./harness";
 
 const RESPONSE = makeResponse(makeFrames(3));
 
-/** Declarations of the first rule whose selector is exactly `selector`. */
+/** Declarations of the first rule whose selector list holds exactly `selector`. */
 function rule(selector: string): string {
-  const css = cardStyles.cssText;
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-  if (!match?.[1]) throw new Error(`no rule for ${selector}`);
-  return match[1].replace(/\s+/g, " ");
+  const css = cardStyles.cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const block of css.split("}")) {
+    const [head, body] = block.split("{");
+    const selectors = (head ?? "").split(",").map((part) => part.trim());
+    if (body !== undefined && selectors.includes(selector)) return body.replace(/\s+/g, " ");
+  }
+  throw new Error(`no rule for ${selector}`);
 }
 
 beforeEach(() => {
@@ -71,5 +74,63 @@ describe("card sizing in a sections view", () => {
     expect(rule(".controls")).toContain("flex-wrap: wrap");
     expect(rule(".slider")).toContain("flex: 1 1 140px");
     expect(rule(".controls button")).toContain("flex: none");
+  });
+});
+
+type PanelCard = Card & { layout?: string; isPanel?: boolean };
+
+async function mountPanel(set: (card: PanelCard) => void, config: Partial<CardConfig> = {}) {
+  const { card } = await mountCard(
+    { autoplay: false, ...config },
+    makeHass(() => RESPONSE),
+  );
+  const panel = card as PanelCard;
+  set(panel);
+  await panel.updateComplete;
+  return panel;
+}
+
+describe("card sizing in a panel view", () => {
+  it("fits under the header when hui-card sets the panel layout", async () => {
+    const card = await mountPanel((panel) => {
+      panel.layout = "panel";
+    });
+    expect(card.hasAttribute("panel")).toBe(true);
+    expect(query(card, "ha-card").className).toBe("panel");
+    const stage = query(card, ".stage");
+    expect(stage.style.aspectRatio).toContain(String(16 / 9));
+    expect(stage.style.getPropertyValue("--map-aspect")).toBe(String(16 / 9));
+    expect(query(card, ".stage > .map > .pin")).toBeTruthy();
+    expect(rule(":host([panel])")).toContain("height: auto");
+    const box = rule("ha-card.panel");
+    expect(box).toContain("flex-direction: column");
+    expect(box).toContain("max-height: calc( 100dvh - var(--header-height, 56px)");
+    expect(rule("ha-card.panel > *")).toContain("flex: none");
+    const stageRule = rule("ha-card.panel .stage");
+    expect(stageRule).toContain("flex: 0 1 auto");
+    expect(stageRule).toContain("min-height: 0");
+    expect(stageRule).toContain("container-type: size");
+    expect(rule("ha-card.panel .map")).toContain("calc(100cqh * var(--map-aspect, 16 / 9))");
+  });
+
+  it("takes the older isPanel flag and wins over numeric grid rows", async () => {
+    const card = await mountPanel(
+      (panel) => {
+        panel.isPanel = true;
+      },
+      { grid_options: { columns: 12, rows: 6 } },
+    );
+    expect(query(card, "ha-card").className).toBe("panel");
+    expect(query(card, ".stage").style.aspectRatio).toContain(String(16 / 9));
+  });
+
+  it("goes back to the sections sizing when the layout changes", async () => {
+    const card = await mountPanel((panel) => {
+      panel.layout = "panel";
+    });
+    card.layout = "grid";
+    await card.updateComplete;
+    expect(card.hasAttribute("panel")).toBe(false);
+    expect(query(card, "ha-card").className).toBe("");
   });
 });

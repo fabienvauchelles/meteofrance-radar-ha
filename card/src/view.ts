@@ -20,6 +20,8 @@ export interface ViewModel {
   nowPct: number | null;
   /** The dashboard gives the card a fixed height (numeric grid rows). */
   fill: boolean;
+  /** The card is alone in a panel view and must fit under the header. */
+  panel: boolean;
   playing: boolean;
   waiting: boolean;
   position: number;
@@ -80,8 +82,11 @@ function renderStage(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
   const pinStyle = pin ? { left: `${pin.left}%`, top: `${pin.top}%` } : {};
   // In fill mode the stage takes the height left by the controls and the map keeps
   // its own ratio inside it, so the pin percentages still land on the right pixel.
+  // In a panel the stage starts at the map ratio and may only shrink from there.
   const aspect = String(vm.aspect);
-  const stageStyle = vm.fill ? { "--map-aspect": aspect } : { "aspect-ratio": aspect };
+  const stageStyle = vm.fill
+    ? { "--map-aspect": aspect }
+    : { "aspect-ratio": aspect, "--map-aspect": aspect };
   const forecast = vm.leadMin !== null;
   return html`
     <div class="stage ${forecast ? "forecast" : ""}" style=${styleMap(stageStyle)}>
@@ -182,7 +187,7 @@ function renderPeriods(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
 export function renderCard(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
   const attribution = vm.attribution;
   return html`
-    <ha-card class=${vm.fill ? "fill" : ""}>
+    <ha-card class=${vm.panel ? "panel" : vm.fill ? "fill" : ""}>
       ${renderTitle(vm)} ${renderStage(vm, handlers)} ${renderControls(vm, handlers)}
       ${renderPeriods(vm, handlers)}
       ${vm.legend ? renderLegend(vm.legend, vm.strings, vm.language) : nothing}
