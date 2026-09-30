@@ -1,8 +1,8 @@
 # Data and storage
 
-What the integration fetches from Météo-France, what it keeps, in what form, and how
-much room that takes. Sizes below were measured on real products from 30 September
-2026, inside the Home Assistant 2026.8.0 image.
+What the integration fetches from Météo-France, radar and forecasts, what it keeps, in
+what form, and how much room that takes. Sizes below were measured on real products
+from 30 September 2026, inside the Home Assistant 2026.8.0 image.
 
 ## The Météo-France API
 
@@ -87,6 +87,7 @@ One file per slot, under the storage folder:
 ```
 frames/YYYY/MM/DD/YYYYMMDDTHHMMZ.mfr    one image
 layers/<style>/YYYYMMDDTHHMMZ.png       rendered cache for the card
+forecast/                               latest forecasts, see "Forecasts" below
 ```
 
 A `.mfr` file is a 4-byte magic `MFRF`, a format version, a JSON header (time, kind,
@@ -148,6 +149,9 @@ What 500 MB holds, in the worst case where every single image is a rainy one:
 Most images are much smaller than that. A dry image is 13 KB, and France is dry most
 of the time, so in practice the same cap covers a lot more.
 
+Forecasts are not part of the cap. Their folder holds two PIAF runs at most and two
+small JSON files, a few megabytes in all, and is never touched by the cap.
+
 If the disk itself runs low (under 1 GB free), new images are skipped with a warning
 rather than filling it up. Those slots are lost, like any other missed image.
 
@@ -170,13 +174,102 @@ Layer URLs carry a style id that changes whenever the colours, the grid or the
 renderer change, so browsers can cache a layer for a year without ever showing a stale
 one.
 
+## Forecasts
+
+Forecasts come from three Météo-France APIs besides DPRadar, each optional (see
+[`install.md`](install.md) for the subscriptions). All three are WCS 2.0.1 services on
+the same portal, with the same `apikey` header. One request fetches one time step, as
+a GRIB2 file.
+
+| API | Runs | Used for | What is fetched |
+| --- | --- | --- | --- |
+| PIAF (`PrevisionImmediatePrecipitations`) | every 5 min, ready about 9 min later | radar card after "now", rain bar 0 to +3 h | 20 steps of the whole of France, one run in three |
+| AROME-PI | every hour, ready 20 to 50 min later | rain bar +3 h to +6 h | the cells around the home, 24 steps of 15 min |
+| AROME | every 3 hours, steps published over time | rain bar after +6 h, up to midnight | the cells around the home, hourly |
+
+### PIAF maps
+
+Every minute the integration checks whether the next PIAF run it wants is out, with
+one small DescribeCoverage request (it answers 404 until the run is published). It
+takes one run every 15 minutes, at :00, :15, :30 and :45, and fetches 20 steps: every
+5 minutes from +5 to +60 min, then every 15 minutes up to +180 min. PIAF gives rain in
+mm per 5 minutes, times 12 for mm/h, like the radar.
+
+Each step is a 3.5 MB GRIB2 file on a 0.01 degree latitude and longitude grid. It is
+decoded in memory with numpy, reprojected onto the same Web Mercator map as the radar,
+classed with the same colours, and saved as a PNG layer. The GRIB2 file is never
+written to disk. The value at the home location is kept for the rain bar. A missed run
+is skipped, never fetched late.
+
+### Pin series for the rain bar
+
+AROME-PI and AROME are only needed at the home location, so each request asks for a
+0.03 degree box around it, a 3 by 3 GRIB2 file of about 200 bytes, and keeps the
+centre cell. AROME-PI (a rain rate in mm/h) is fetched once per new hourly run.
+AROME (an hourly amount, so also mm/h) is checked every hour, and only the steps not
+fetched yet are requested. When the home location moves, the latest run is fetched
+again for the new place.
+
+### Request budgets
+
+Météo-France allows 100 requests per minute per forecast API. The integration keeps
+each API under 90 a minute, with at least 0.7 s between two requests.
+
+| API | Requests per hour | Burst | Download |
+| --- | --- | --- | --- |
+| PIAF | about 90 (4 runs of 20 steps, plus the checks) | 20 in about 25 s | about 280 MB per hour |
+| AROME-PI | 24, plus up to 36 checks (usually about 10) | 24 | under 10 KB per hour |
+| AROME | 2 or 3, up to 24 on a new run | 24 | under 10 KB per hour |
+
+Each PIAF step takes well under a second of one core to decode and render, one at a
+time, sharing the radar's render lock. The reprojection table for the forecast grid
+(about 18 MB) is built once and kept in memory.
+
+### When a forecast API fails
+
+A 401 or 403 means the key is not subscribed to that API: a repair names the API to
+subscribe to, and it is tried again every hour. Any other failure is retried after 2,
+4, 8, 16, then every 30 minutes. A GRIB2 file in a form the decoder does not read (a
+packing other than simple packing, or a bitmap of missing cells) is refused loudly
+and counts as a failure. The radar never waits for a forecast, and error messages
+name the API, the request and the status, never the query (which holds the home
+location) nor the key.
+
+### Forecast storage
+
+```
+forecast/piaf/<RUN>/<VALID>.png          one layer per step
+forecast/piaf/<RUN>/run.json             run, style, steps, and the value at the home
+forecast/piaf/.staging-<RUN>/            run being fetched, moved into place when complete
+forecast/pins/aromepi.json               latest AROME-PI values at the home
+forecast/pins/arome.json                 latest AROME values at the home
+```
+
+`RUN` and `VALID` are UTC times, `YYYYMMDDTHHMMZ`. Only the latest PIAF run is listed
+to the card. The one before it stays on disk until the next run lands, so a card that
+fetched the list just before a new run still gets its images. Older runs, runs of an
+older style and unfinished staging folders are deleted. Nothing is archived.
+
 ## HTTP endpoints
 
-Both require a logged-in Home Assistant user, like the rest of the API.
+All require a logged-in Home Assistant user, like the rest of the API.
 
 - `GET /api/meteofrance_radar/frames?period=3h|24h|7d|30d|all`: the frames of the
   period, the basemap URL, the grid, the pin position of the home location, the legend,
-  the attribution and, for each frame, how many minutes were skipped before it.
+  the attribution and, for each frame, how many minutes were skipped before it. A
+  `forecast` part lists the PIAF frames after "now": the status of PIAF, its run, the
+  "now" time (the latest radar image, or the current 5 minutes when that image is more
+  than 15 minutes old), and for each frame its time, its lead in minutes and its URL.
+  The list is empty when there is no forecast.
+- `GET /api/meteofrance_radar/forecast/<style>/<RUN>/<VALID>.png`: one forecast layer,
+  cached a year by the browser. Only the current and the previous run answer; anything
+  else is 404.
+- `GET /api/meteofrance_radar/pin_series`: the rain bar. The time window (3 hours ago
+  to midnight in Paris, at least 6 hours ahead), whether a home location is set, the
+  legend, and the segments in order, each with its source (`radar`, `piaf`,
+  `aromepi`, `arome`), start, end, rate in mm/h (`null` for no data) and colour class.
+  Each source takes over where the previous one ends, so when PIAF is missing,
+  AROME-PI starts at "now". A `sources` part gives the status and run of each one.
 - `GET /api/meteofrance_radar/layers/<style>/<YYYYMMDDTHHMMZ>.png`: one rendered layer.
   A layer that cannot be rendered answers 500 with `{"error": "cannot render layer",
   "slot": ...}` and nothing more; the details go to the Home Assistant log, in full

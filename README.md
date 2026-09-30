@@ -1,15 +1,16 @@
 # meteofrance-radar-ha
 
 The Météo-France rain radar in Home Assistant: a Lovelace card that plays the 500 m
-rain mosaic over a map of France, with a pin on your home, and keeps weeks of history
-on your own disk.
+rain mosaic over a map of France, with a pin on your home, carries on into the next
+3 hours with the Météo-France nowcast, and keeps weeks of history on your own disk. A
+second card shows the rain at home as a single bar, from 3 hours ago to tonight.
 
 This is an unofficial community project. It is not affiliated with, endorsed by, or
 supported by Météo-France.
 
 ## What you get
 
-One integration and one card. Add your Météo-France API key, put the card on a
+One integration and two cards. Add your Météo-France API key, put a card on a
 dashboard, and that is it.
 
 - **An animated radar card.** Play, pause, step one frame back or forward, scrub the
@@ -20,12 +21,21 @@ dashboard, and that is it.
 - **History kept at home.** Every 5-minute image for the last 3 hours, one per hour
   up to a month, one every 3 hours beyond that, until the size cap is reached. By
   default the cap is 500 MB, which covers several months.
+- **The next 3 hours.** After the last radar image the animation goes on with the
+  PIAF nowcast: every 5 minutes for the first hour, then every 15 minutes. Forecast
+  images are marked: "Forecast +45 min" in the title, a "Forecast" banner on the map,
+  and a "now" marker on the time slider. Forecasts need extra (free) subscriptions on
+  the Météo-France portal, see below; without them the card simply stops at "now".
+- **A rain bar card.** One horizontal bar with the rain at your home, from 3 hours ago
+  to midnight (and at least 6 hours ahead): the radar history for the past, then the
+  PIAF, AROME-PI and AROME forecasts. Same colours as the radar legend, a "now" line,
+  the forecast part lightly hatched, and the time and rate when you hover a segment.
 - **Gaps are shown, not hidden.** When an image is missing the card jumps over it
   and says so in the title ("gap of 25 min skipped").
 - **English and French**, following the language and time zone set in Home
   Assistant.
 
-There are no entities. No sensor, no camera, no binary sensor: only the card.
+There are no entities. No sensor, no camera, no binary sensor: only the cards.
 
 ## Why this exists
 
@@ -45,7 +55,8 @@ Full steps, with what each screen looks like, are in
 1. **Get an API key.** Create a free account on
    [portail-api.meteofrance.fr](https://portail-api.meteofrance.fr), subscribe to
    the **DPRadar** API, and generate an API key. Keep the key at hand; it is valid
-   for about a year.
+   for about a year. For forecasts, also subscribe to the three APIs listed in
+   [Forecasts](#forecasts) before generating the key.
 2. **HACS.** HACS > top-right menu > Custom repositories, add
    `https://github.com/fabienvauchelles/meteofrance-radar-ha` as an
    **Integration**, then download **Météo-France Radar**.
@@ -54,9 +65,35 @@ Full steps, with what each screen looks like, are in
 4. **Add the integration.** Settings > Devices & Services > Add integration >
    **Météo-France Radar**, then paste the key. It is checked against the API
    before the entry is saved.
-5. **Add the card.** Open a dashboard, Edit > Add card, search for
-   **Météo-France Radar**. If it is not in the list, reload the browser tab once.
-   The first image shows up a few minutes after step 4.
+5. **Add the cards.** Open a dashboard, Edit > Add card, search for
+   **Météo-France Radar** or **Météo-France Rain Bar**. If they are not in the list,
+   reload the browser tab once. The first image shows up a few minutes after step 4.
+
+## Forecasts
+
+The radar comes from the DPRadar API. Forecasts come from three more APIs on the same
+portal, all free and all optional. Each one you skip only removes its part:
+
+| Portal API | Used for |
+| --- | --- |
+| **PrevisionImmediatePrecipitations**, "Modèle AROME Prévision Immédiate Agrégée Fusionnée (PIAF)" | The forecast images on the radar card, and the next 3 hours of the rain bar. |
+| **AROME-PI**, "Modèle AROME Prévision Immédiate" | The rain bar from +3 h to +6 h. |
+| **AROME**, "Modèle AROME" | The rain bar after +6 h, up to midnight. |
+
+A key only carries the subscriptions that existed when it was generated. So after
+subscribing, **generate a new key** on the portal, then in Home Assistant open
+Settings > Devices & Services > Météo-France Radar > three-dot menu > **Reconfigure**
+and paste it. The radar history is kept.
+
+When the key is not subscribed to one of them, the radar goes on as usual, and
+Settings > System > Repairs shows which API to subscribe to. The repair goes away by
+itself once that API answers.
+
+**Bandwidth.** The PIAF images are downloaded for the whole of France, 20 of them per
+forecast run, one run every 15 minutes: about **280 MB per hour**, 6.7 GB a day. They
+are turned into small images for the card and not kept. The AROME-PI and AROME
+requests only ask for the few cells around your home, a few kilobytes an hour. On a
+metered connection, leave the PIAF subscription out.
 
 ## Constraints worth knowing before you start
 
@@ -69,7 +106,10 @@ None of these are bugs. They come from how the Météo-France API works.
 - **History starts the day you install.** There is no backfill. The 30-day view
   fills up over 30 days.
 - **France only.** The mosaic covers mainland France and Corsica. If your home is
-  outside the map, the pin is not drawn; the radar still plays.
+  outside the map, the pin is not drawn; the radar still plays. The rain bar needs a
+  home location in France.
+- **Forecasts are not archived.** Only the latest forecast run is kept. Once a time
+  has passed, the card shows what the radar saw, not what was forecast.
 - **The API key expires.** Keys are generated with a one-year lifetime. Two weeks
   before the date, a repair shows up in Settings > System > Repairs; follow it to
   paste a new key. Once the key has expired, Home Assistant asks for a new one and
@@ -99,7 +139,9 @@ Changing the key, reauthenticating, removing the integration or reinstalling it
 never deletes the stored history.
 
 The card options are all optional, and can be set in the card's visual editor or
-in YAML.
+in YAML. The editor shows the defaults when an option is not set.
+
+### Radar card
 
 | Card option | Default | Meaning |
 | --- | --- | --- |
@@ -108,6 +150,7 @@ in YAML.
 | `show_legend` | `true` | Show the mm/h legend under the map. |
 | `frame_duration_ms` | `500` | Time spent on each image, from 100 to 5000 ms. |
 | `crossfade_ms` | `300` | Fade between two images, from 0 to 2000 ms. Never longer than `frame_duration_ms`. No fade across a gap. |
+| `show_forecast` | `true` | Play the PIAF forecast after the last radar image. |
 
 ```yaml
 type: custom:meteofrance-radar-card
@@ -116,9 +159,39 @@ autoplay: true
 frame_duration_ms: 400
 ```
 
+### Rain bar card
+
+| Card option | Default | Meaning |
+| --- | --- | --- |
+| `title` | none | Text shown above the bar. |
+| `show_legend` | `false` | Show the mm/h legend under the bar. |
+
+```yaml
+type: custom:meteofrance-rain-bar-card
+title: Rain at home
+show_legend: true
+```
+
+The bar refreshes every 5 minutes. Its hour labels follow the time zone and language
+set in Home Assistant.
+
+### Sections view sizing
+
+Both cards support the `grid_options` of a sections view. The radar card takes the
+full width by default and fits a half-width column (6 of 12 columns): the map scales
+to the card width at 16:9 and the controls wrap. With a fixed number of `rows`, the
+map fits the height and stays centred. The rain bar needs one row and can go down to
+a quarter of the width.
+
+```yaml
+type: custom:meteofrance-radar-card
+grid_options:
+  columns: 6
+```
+
 ## Status and limitations
 
-Version `0.1.0`. First release, written against Home Assistant 2026.8.
+Version `0.2.0`, written against Home Assistant 2026.8 and running on 2026.9.
 
 - **Tested on x86_64.** `h5py` was installed and run with Home Assistant's own
   installer in the 2026.8.0 image. An `aarch64` wheel exists on PyPI but has not
@@ -132,6 +205,8 @@ Version `0.1.0`. First release, written against Home Assistant 2026.8.
   turned out slightly smaller anyway. Details and measured sizes are in
   [`docs/data-and-storage.md`](docs/data-and-storage.md).
 - **One config entry.** One key, one storage folder.
+- **Forecast CPU cost.** Each PIAF image costs well under a second to decode and
+  render, 20 per run, one at a time and never alongside a radar render.
 
 ## Development
 
@@ -151,13 +226,14 @@ The integration follows a strict inward dependency rule: `domain/` is pure (nump
 and the standard library), the adapters (`api/`, `decode/`, `store/`, `render/`)
 implement the protocols in `domain/ports.py`, and only the top-level modules import
 Home Assistant. The polar stereographic projection is a few lines of numpy, checked
-against `pyproj` in the tests only, so `h5py` is the one runtime requirement.
+against `pyproj` in the tests only, so `h5py` is the one runtime requirement. The
+forecast GRIB2 files are read by a small numpy decoder too, with no eccodes.
 
 Tests are full scenarios through Home Assistant's test harness (config flow, setup,
-collector passes against a mocked API, the HTTP views), plus focused tests for the
-georeferencing, tiers and the frame format. The georeferencing tests run on a real
-Météo-France product in `tests/fixtures/` and check that 28 radar sites land within
-one pixel of where they belong.
+collector passes and forecast runs against a mocked API, the HTTP views), plus
+focused tests for the georeferencing, tiers, the frame format and the GRIB decoder.
+The georeferencing tests run on a real Météo-France product in `tests/fixtures/` and
+check that 28 radar sites land within one pixel of where they belong.
 
 The card bundle is built by rollup into
 `custom_components/meteofrance_radar/www/` and committed, because HACS installs
@@ -174,6 +250,8 @@ Météo-France is a trademark of Météo-France. It is used here only to say whe
 data comes from. The icons under `custom_components/meteofrance_radar/brand/` are
 drawn for this project and do not use any Météo-France logo.
 
+- **Forecast data: Météo-France.** PIAF, AROME-PI and AROME come from the same
+  portal and are bound by its terms; the cards credit Météo-France.
 - **Radar data: Météo-France.** The "lame d'eau" mosaic comes from the DPRadar API
   on the [Météo-France API portal](https://portail-api.meteofrance.fr/web/fr/api/DonneesPubliquesRadar),
   open data under the Licence Ouverte / Open Licence version 2.0 (Etalab), reached with
