@@ -30,7 +30,7 @@ from tests.support.setup import async_setup_integration
 WWW = Path(__file__).parents[2] / "custom_components" / "meteofrance_radar" / "www"
 CARD_URL = "/meteofrance_radar/meteofrance-radar-card.js"
 BASEMAP_URL = "/meteofrance_radar/basemap.png"
-CURRENT = f"{CARD_URL}?v=0.1.0"
+CURRENT = f"{CARD_URL}?v=0.2.0"
 RESOURCES_KEY = "lovelace_resources"
 
 
@@ -67,7 +67,7 @@ async def test_card_and_basemap_are_served_statically(
     card = await client.get(CURRENT)
     assert card.status == HTTPStatus.OK
     assert await card.read() == (WWW / "meteofrance-radar-card.js").read_bytes()
-    basemap = await client.get(f"{BASEMAP_URL}?v=0.1.0")
+    basemap = await client.get(f"{BASEMAP_URL}?v=0.2.0")
     assert basemap.status == HTTPStatus.OK
     image = Image.open(io.BytesIO(await basemap.read()))
     assert image.size == (FRANCE_GRID.width, FRANCE_GRID.height) == (1920, 1080)
