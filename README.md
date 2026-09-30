@@ -128,7 +128,7 @@ Version `0.1.0`. First release, written against Home Assistant 2026.8.
   render. A Raspberry Pi 4 is several times slower; it still works, but opening the
   30-day view on a cold cache takes a while.
 - **Compression is xz, not zstd.** Home Assistant's Python is built without the
-  `zstd` module, so frames are stored with the standard library's `lzma`, which
+  `_zstd` module, so frames are stored with the standard library's `lzma`, which
   turned out slightly smaller anyway. Details and measured sizes are in
   [`docs/data-and-storage.md`](docs/data-and-storage.md).
 - **One config entry.** One key, one storage folder.
@@ -175,9 +175,12 @@ data comes from. The icons under `custom_components/meteofrance_radar/brand/` ar
 drawn for this project and do not use any Météo-France logo.
 
 - **Radar data: Météo-France.** The "lame d'eau" mosaic comes from the DPRadar API
-  on the [Météo-France API portal](https://portail-api.meteofrance.fr), published
-  as open data under the Etalab Open Licence 2.0. The card credits Météo-France in
-  its title and footer. Your use of the API is also bound by the portal's terms.
+  on the [Météo-France API portal](https://portail-api.meteofrance.fr/web/fr/api/DonneesPubliquesRadar),
+  open data under the Licence Ouverte / Open Licence version 2.0 (Etalab), reached with
+  a free portal account (source:
+  [data.gouv.fr record of the API](https://www.data.gouv.fr/dataservices/api-donnees-radar)).
+  The licence asks you to credit the source; the card credits Météo-France in its
+  title and footer. Your use of the API is also bound by the portal's terms.
 - **Departments:** IGN ADMIN EXPRESS COG 2018, simplified by
   [france-geojson](https://github.com/gregoiredavid/france-geojson), Etalab Open
   Licence.

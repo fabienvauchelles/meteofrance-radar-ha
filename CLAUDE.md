@@ -92,7 +92,9 @@ HA glue: __init__, config_flow, coordinator, collector, views, frontend, repairs
 - **Tiers** (`domain/tiers.py`): 5 min under 3 h, hourly under 30 days, 3-hourly after. Each
   bucket keeps its earliest frame; buckets nest, so thinning is idempotent and HH:05 replaces
   a missed HH:00. Frames entering the 3-hourly tier become `class_u8` (12 palette indices),
-  at most 24 per maintenance run. A `class_u8` frame renders to the identical PNG.
+  at most 24 per maintenance run. A `class_u8` frame renders to the identical PNG; it
+  stores its `levels_mmh`, and rendering maps them onto the current classes
+  (`class_remap`), never reads the indices as current ones.
 - **Size cap** covers frames plus layers; layers get 10 % (`LAYER_CACHE_SHARE`). Oldest frames
   go first; no maximum age. Order per run: thin, downgrade, cap frames, cap layers, drop
   orphan layers.

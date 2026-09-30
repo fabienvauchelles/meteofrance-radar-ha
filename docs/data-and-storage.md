@@ -29,8 +29,18 @@ that fell in each 500 m cell over 5 minutes, merged from the French weather rada
   the next minute tries again.
 
 The key is a JWT. Its `exp` claim, set when the key is generated on the portal, is read
-locally (the signature is not checked) to warn two weeks ahead and to refuse an expired
-key before calling the API.
+locally (the signature is not checked) before every pass: from two weeks ahead a
+repair issue offers to enter a new key, and once the key has expired the pass stops
+before calling the API and Home Assistant asks for a new key (reauthentication).
+
+**Licence.** Météo-France publishes the radar APIs on data.gouv.fr under the
+Licence Ouverte / Open Licence version 2.0 (Etalab), with access through a free
+account on the API portal: see the
+[API Données Radar record](https://www.data.gouv.fr/dataservices/api-donnees-radar)
+(licence `lov2`), the
+[portal page](https://portail-api.meteofrance.fr/web/fr/api/DonneesPubliquesRadar) and
+the [licence text](https://www.etalab.gouv.fr/licence-ouverte-open-licence). Reuse must
+credit the source, "Météo-France"; the card does so in its title and footer.
 
 ## One collector pass
 
@@ -63,7 +73,9 @@ Each hour keeps its earliest image, and so does each 3-hour block. If the image 
 When an image passes 30 days, it is rewritten as the 12 colour classes the card
 displays, instead of the raw rain values. It renders to exactly the same picture, but
 takes about half the room. At most 24 images are rewritten per pass, so catching up
-after a long stop does not hog the CPU.
+after a long stop does not hog the CPU. The file keeps the class limits (in mm/h) it
+was made with. If a later version changes the legend, each old class is drawn in the
+current class that holds its lower limit, so old history keeps its meaning.
 
 There is no maximum age. Images are only removed when the storage goes over the size
 cap, oldest first.
@@ -89,7 +101,8 @@ never leaves a half-written image. Times are UTC throughout.
 ### Why xz and not zstd
 
 Python 3.14 has zstd in its standard library, but Home Assistant builds its own Python
-without it (`import compression.zstd` fails in the 2026.8.0 image), and the
+without the `_zstd` extension module (`import _zstd` and `import compression.zstd`
+fail in the 2026.8.0 image, Python 3.14.6), and the
 `zstandard` package from PyPI does not install reliably through Home Assistant's
 package index. So xz it is, and it happens to be smaller:
 
@@ -145,7 +158,9 @@ period, then for each frame's PNG layer. A layer is rendered the first time it i
 asked for: the stored image is decoded, reprojected from Météo-France's polar
 stereographic grid onto the Web Mercator basemap (1920 x 1080, centred on 2.5 E,
 46.6 N), classed into the 12 mm/h colours, and saved as a PNG. That takes a second or
-two. One render runs at a time; cached layers are served straight away.
+two. One render runs at a time; cached layers are served straight away. The
+reprojection table (about 19 MB) is built once and kept in memory; at most two are
+kept, for the unlikely case of a history spanning a change of the Météo-France grid.
 
 The rain rate shown is the 5-minute amount times 12, in mm/h. The legend classes start
 at 0.1 mm/h and go up to 70 mm/h. Cells with no data are drawn in a faint grey, so a
@@ -163,5 +178,8 @@ Both require a logged-in Home Assistant user, like the rest of the API.
   period, the basemap URL, the grid, the pin position of the home location, the legend,
   the attribution and, for each frame, how many minutes were skipped before it.
 - `GET /api/meteofrance_radar/layers/<style>/<YYYYMMDDTHHMMZ>.png`: one rendered layer.
+  A layer that cannot be rendered answers 500 with `{"error": "cannot render layer",
+  "slot": ...}` and nothing more; the details go to the Home Assistant log, in full
+  the first time for a slot and at debug level after that.
 
 The card bundle and the basemap are served as static files under `/meteofrance_radar/`.
