@@ -2,6 +2,14 @@
 
 Covers the whole project: the integration and the cards.
 
+## 0.2.1
+
+- In a panel view the radar card ran below the screen on large displays (at 1920x1080
+  the slider and buttons needed scrolling) and stretched to an empty box on phones,
+  because the map always took the full width at 16:9 with no height limit. The card now
+  fits under the Home Assistant header: the map keeps its ratio, shrinks to the largest
+  size that fits, and is centred, with the pin and forecast banner still on it.
+
 ## 0.2.0
 
 Forecasts, a second card, and fixes to the first one.

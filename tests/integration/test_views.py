@@ -130,7 +130,7 @@ async def test_three_hours_skips_the_hole_and_counts_it(
 ) -> None:
     client = await hass_client()
     body = await _frames(client, "3h")
-    assert body["version"] == "0.2.0"
+    assert body["version"] == "0.2.1"
     assert body["grid"] == {
         "width": 1920,
         "height": 1080,
@@ -138,7 +138,7 @@ async def test_three_hours_skips_the_hole_and_counts_it(
         "center_lat": 46.6,
         "zoom": 6.4,
     }
-    assert body["basemap"] == "/meteofrance_radar/basemap.png?v=0.2.0"
+    assert body["basemap"] == "/meteofrance_radar/basemap.png?v=0.2.1"
     assert body["attribution"]["radar"] == "Météo-France"
     assert body["legend"]["unit"] == "mm/h"
     assert len(body["legend"]["levels"]) == len(body["legend"]["colors"]) + 1

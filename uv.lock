@@ -1401,7 +1401,7 @@ wheels = [
 
 [[package]]
 name = "meteofrance-radar-ha"
-version = "0.2.0"
+version = "0.2.1"
 source = { virtual = "." }
 
 [package.dev-dependencies]

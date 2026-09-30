@@ -1,6 +1,6 @@
 {
   "name": "meteofrance-radar-card",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Home Assistant Lovelace card playing the Météo-France rain radar",
   "license": "SEE LICENSE IN ../LICENSE",
   "private": true,

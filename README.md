@@ -191,7 +191,7 @@ grid_options:
 
 ## Status and limitations
 
-Version `0.2.0`, written against Home Assistant 2026.8 and running on 2026.9.
+Version `0.2.1`, written against Home Assistant 2026.8 and running on 2026.9.
 
 - **Tested on x86_64.** `h5py` was installed and run with Home Assistant's own
   installer in the 2026.8.0 image. An `aarch64` wheel exists on PyPI but has not

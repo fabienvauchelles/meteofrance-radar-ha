@@ -197,7 +197,7 @@ async def test_bar_joins_radar_piaf_aromepi_and_arome(
         assert await _series(client) == body
         assert reads.call_count == 0
 
-    assert body["version"] == "0.2.0"
+    assert body["version"] == "0.2.1"
     assert body["now"] == "2026-09-30T15:07:00Z"
     # 22:00 UTC is midnight in Paris (summer time), more than 6 hours ahead.
     assert body["window"] == {"start": "2026-09-30T12:07:00Z", "end": "2026-09-30T22:00:00Z"}
