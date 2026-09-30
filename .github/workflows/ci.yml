@@ -48,7 +48,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # GitHub's licensee cannot map FSL-1.1-MIT to an SPDX id (it reports
+      # NOASSERTION), so the HACS license check can never pass on this repo.
       - name: Validate for HACS
         uses: hacs/action@main
         with:
           category: integration
+          ignore: license
