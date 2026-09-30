@@ -7,7 +7,6 @@ interval is well under the 5-minute product cadence and the catalogue's
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
@@ -25,7 +24,12 @@ if TYPE_CHECKING:
 
 
 class RadarCoordinator(DataUpdateCoordinator[CollectorState]):
-    """Drives the collector; an auth failure starts reauth and stops polling."""
+    """Drives the collector; an auth failure starts reauth and stops polling.
+
+    Every pass first reads the key's JWT ``exp`` claim: 14 days ahead it raises the
+    expiring-key repair issue, and once the key has expired it starts reauth without
+    calling the API.
+    """
 
     config_entry: RadarConfigEntry
 
@@ -41,13 +45,12 @@ class RadarCoordinator(DataUpdateCoordinator[CollectorState]):
 
     async def _async_update_data(self) -> CollectorState:
         now = dt_util.utcnow()
-        key_expiry = async_check_key_expiry(self.hass, self.config_entry, now)
+        async_check_key_expiry(self.hass, self.config_entry, now)
         try:
-            state = await self._collector.run_pass(now)
+            return await self._collector.run_pass(now)
         except ApiAuthError as exc:
             raise ConfigEntryAuthFailed(str(exc)) from exc
         except ApiError as exc:
             raise UpdateFailed(str(exc)) from exc
         except OSError as exc:
             raise UpdateFailed(f"storage error: {type(exc).__name__}: {exc}") from exc
-        return replace(state, key_expiry=key_expiry)

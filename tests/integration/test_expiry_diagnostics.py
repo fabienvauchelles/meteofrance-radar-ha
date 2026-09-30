@@ -120,6 +120,43 @@ async def test_expired_key_starts_reauth_without_calling_the_api(
     assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_KEY_EXPIRING) is None
 
 
+async def test_key_expiring_while_running_warns_then_reauths_then_resumes(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    tmp_path: Path,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    key = make_key(dt_util.utcnow() + timedelta(minutes=1, seconds=30))
+    mock_api(aioclient_mock, FIXTURE_SLOT, dry_product(FIXTURE_SLOT))
+    entry = await async_setup_integration(hass, tmp_path / "radar", key=key)
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_KEY_EXPIRING)
+    assert issue is not None
+    assert issue.translation_placeholders == {"expiry": "2026-09-30"}
+    calls_at_setup = calls_to(aioclient_mock, CATALOGUE_URL)
+
+    await async_tick(hass, freezer)
+    assert _reauth_flows(hass) == []
+    calls_before_expiry = calls_to(aioclient_mock, CATALOGUE_URL)
+    assert calls_before_expiry > calls_at_setup
+
+    await async_tick(hass, freezer)
+    await async_tick(hass, freezer)
+    await async_tick(hass, freezer)
+
+    [reauth] = _reauth_flows(hass)
+    assert calls_to(aioclient_mock, CATALOGUE_URL) == calls_before_expiry
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_KEY_EXPIRING) is None
+    assert entry.runtime_data.coordinator.last_update_success is False
+
+    result = await hass.config_entries.flow.async_configure(reauth, {CONF_API_KEY: NEW_KEY})
+    await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert entry.state is ConfigEntryState.LOADED
+    assert calls_to(aioclient_mock, CATALOGUE_URL) > calls_before_expiry
+    assert entry.runtime_data.coordinator.last_update_success is True
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_KEY_EXPIRING) is None
+
+
 async def test_diagnostics_redact_the_key_and_describe_the_storage(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
@@ -137,6 +174,7 @@ async def test_diagnostics_redact_the_key_and_describe_the_storage(
     assert diagnostics["collector"]["outcome"] == "stored"
     assert diagnostics["collector"]["last_stored_slot"] == "2026-09-30T10:30:00Z"
     storage = diagnostics["storage"]
+    assert diagnostics["render"]["tables"] == 0
     assert storage["root"] == str(root)
     assert storage["frames"] == 1
     assert storage["frames_per_tier"] == {"5min": 1}

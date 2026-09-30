@@ -25,13 +25,10 @@ EXPIRY_DATE_FORMAT = "%Y-%m-%d"
 
 
 @callback
-def async_check_key_expiry(
-    hass: HomeAssistant, entry: ConfigEntry, now: datetime
-) -> datetime | None:
+def async_check_key_expiry(hass: HomeAssistant, entry: ConfigEntry, now: datetime) -> None:
     """Raise or clear the expiring-key issue for the entry's key.
 
-    Returns:
-        The key expiry, or None when the key carries no readable ``exp`` claim.
+    A key with no readable ``exp`` claim has no known expiry and never raises the issue.
 
     Raises:
         ConfigEntryAuthFailed: the key has already expired.
@@ -39,7 +36,7 @@ def async_check_key_expiry(
     expiry = api_key_expiry(entry.data[CONF_API_KEY])
     if expiry is None:
         ir.async_delete_issue(hass, DOMAIN, ISSUE_KEY_EXPIRING)
-        return None
+        return
     if expiry <= now:
         ir.async_delete_issue(hass, DOMAIN, ISSUE_KEY_EXPIRING)
         raise ConfigEntryAuthFailed("the Météo-France API key has expired")
@@ -58,7 +55,6 @@ def async_check_key_expiry(
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, ISSUE_KEY_EXPIRING)
-    return expiry
 
 
 def key_is_expired(key: str, now: datetime) -> bool:

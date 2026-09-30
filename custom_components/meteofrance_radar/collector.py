@@ -49,7 +49,6 @@ class CollectorState:
     outcome: PassOutcome
     last_stored_slot: datetime | None
     last_error: str | None
-    key_expiry: datetime | None = None
 
 
 def free_bytes(root: Path) -> int:
