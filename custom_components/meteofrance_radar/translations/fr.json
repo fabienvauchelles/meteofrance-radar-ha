@@ -8,7 +8,7 @@
           "api_key": "Clé d'API"
         },
         "data_description": {
-          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar. Les prévisions de pluie sont facultatives : elles demandent aussi les API PIAF, AROME-PI et AROME sur la même clé."
         }
       },
       "reauth_confirm": {
@@ -18,7 +18,7 @@
           "api_key": "Clé d'API"
         },
         "data_description": {
-          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar. Les prévisions de pluie sont facultatives : elles demandent aussi les API PIAF, AROME-PI et AROME sur la même clé."
         }
       },
       "reconfigure": {
@@ -28,7 +28,7 @@
           "api_key": "Clé d'API"
         },
         "data_description": {
-          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar. Les prévisions de pluie sont facultatives : elles demandent aussi les API PIAF, AROME-PI et AROME sur la même clé."
         }
       }
     },
@@ -77,6 +77,10 @@
           "entry_not_found": "L'intégration Météo-France Radar n'est plus configurée."
         }
       }
+    },
+    "forecast_forbidden": {
+      "title": "Clé Météo-France non abonnée à l'API de prévision {product}",
+      "description": "Météo-France a refusé la clé d'API pour les prévisions {product}. Sur portail-api.meteofrance.fr, abonnez-vous à l'API « {api} », puis générez une nouvelle clé : une clé existante ne reçoit pas les nouveaux abonnements. Saisissez la nouvelle clé avec Reconfigurer sur l'intégration Météo-France Radar. En attendant, le radar continue de fonctionner et les cartes affichent les prévisions disponibles."
     }
   }
 }

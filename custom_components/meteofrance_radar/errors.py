@@ -76,6 +76,14 @@ class UnsupportedProjectionError(InvalidProductError):
     """The product projdef is one the numpy projection cannot handle."""
 
 
+class GribFormatError(InvalidProductError):
+    """A GRIB2 forecast field uses a layout the numpy reader does not support.
+
+    Raised on a bad magic or edition, an unsupported grid or packing template, bits per
+    value, bitmap or scanning mode, or a truncated message. The message names the field.
+    """
+
+
 class FrameFormatError(RadarError):
     """A stored frame file has a bad magic, version, header or codec."""
 

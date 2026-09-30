@@ -30,6 +30,9 @@ class LayerService:
         tables: Reprojection tables, shared by every render of this process.
         grid: Target grid of every layer.
         style: Current style id, the only one served.
+        render_lock: Lock serialising every render of this process; forecast layers
+            share it so a radar and a forecast render never run at once. A new lock
+            when omitted.
     """
 
     def __init__(
@@ -39,18 +42,24 @@ class LayerService:
         tables: TableCache,
         grid: TargetGrid,
         style: str,
+        render_lock: threading.Lock | None = None,
     ) -> None:
         self._store = store
         self._cache = cache
         self._tables = tables
         self._grid = grid
         self._style = style
-        self._render_lock = threading.Lock()
+        self._render_lock = render_lock if render_lock is not None else threading.Lock()
 
     @property
     def style(self) -> str:
         """The current style id, part of every layer URL."""
         return self._style
+
+    @property
+    def render_lock(self) -> threading.Lock:
+        """The lock every render holds, to share with the forecast renders."""
+        return self._render_lock
 
     @property
     def table_count(self) -> int:

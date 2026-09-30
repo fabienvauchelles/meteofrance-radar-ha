@@ -2,6 +2,7 @@
 
 The catalogue body is the real response saved in the fixtures, with the validity time
 of its 500 m link replaced. Keys are unsigned JWTs: the integration only reads ``exp``.
+Every helper that resets the routes routes the forecast APIs again (``forecast_api``).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.meteofrance_radar.const import API_BASE_URL
 from tests.conftest import CATALOGUE_FIXTURE
+from tests.support.forecast_api import mock_forecast_absent
 from tests.support.odim_factory import write_odim
 
 CATALOGUE_URL = f"{API_BASE_URL}/mosaiques/METROPOLE/observations/LAME_D_EAU"
@@ -63,6 +65,7 @@ def mock_api(
 ) -> None:
     """Replace every registered response with a catalogue at ``validity`` and a product."""
     aioclient_mock.clear_requests()
+    mock_forecast_absent(aioclient_mock)
     aioclient_mock.get(CATALOGUE_URL, json=catalogue_body(validity))
     if product is not None:
         aioclient_mock.get(PRODUCT_URL, content=product)
@@ -75,12 +78,14 @@ def mock_catalogue_error(
 ) -> None:
     """Replace every registered response with a failing catalogue."""
     aioclient_mock.clear_requests()
+    mock_forecast_absent(aioclient_mock)
     aioclient_mock.get(CATALOGUE_URL, status=status, json=body or {})
 
 
 def mock_catalogue_unreachable(aioclient_mock: AiohttpClientMocker) -> None:
     """Replace every registered response with a catalogue that times out."""
     aioclient_mock.clear_requests()
+    mock_forecast_absent(aioclient_mock)
     aioclient_mock.get(CATALOGUE_URL, exc=TimeoutError())
 
 

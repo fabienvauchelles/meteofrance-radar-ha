@@ -8,7 +8,7 @@
           "api_key": "API key"
         },
         "data_description": {
-          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API. Rain forecasts are optional: they also need the PIAF, AROME-PI and AROME APIs on the same key."
         }
       },
       "reauth_confirm": {
@@ -18,7 +18,7 @@
           "api_key": "API key"
         },
         "data_description": {
-          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API. Rain forecasts are optional: they also need the PIAF, AROME-PI and AROME APIs on the same key."
         }
       },
       "reconfigure": {
@@ -28,7 +28,7 @@
           "api_key": "API key"
         },
         "data_description": {
-          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API. Rain forecasts are optional: they also need the PIAF, AROME-PI and AROME APIs on the same key."
         }
       }
     },
@@ -77,6 +77,10 @@
           "entry_not_found": "The Météo-France Radar integration is no longer set up."
         }
       }
+    },
+    "forecast_forbidden": {
+      "title": "Météo-France key not subscribed to the {product} forecast API",
+      "description": "Météo-France refused the API key for {product} forecasts. On portail-api.meteofrance.fr, subscribe to the \"{api}\" API, then generate a new key: an existing key does not gain new subscriptions. Enter the new key through Reconfigure on the Météo-France Radar integration. Until then the radar keeps working and the cards show the forecasts they have."
     }
   }
 }

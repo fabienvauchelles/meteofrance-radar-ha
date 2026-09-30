@@ -81,13 +81,14 @@ async def async_setup_integration(
     options: dict[str, Any] | None = None,
     expect: ConfigEntryState = ConfigEntryState.LOADED,
 ) -> MockConfigEntry:
-    """Add the entry, set it up and wait until the first pass is done.
+    """Add the entry, set it up and wait until the first radar pass and forecast tick are done.
 
-    The API must be mocked beforehand (``tests.support.mf_api.mock_api``).
+    The API must be mocked beforehand (``tests.support.mf_api.mock_api``). The first
+    forecast tick runs as an entry background task, hence the wait on those tasks.
     """
     entry = radar_entry(storage, key=key, options=options)
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert entry.state is expect
     return entry

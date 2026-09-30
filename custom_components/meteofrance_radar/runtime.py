@@ -20,13 +20,30 @@ from .const import CONF_STORAGE_PATH, STORAGE_SUBDIR
 from .errors import StoragePathError
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from .api.wcs import WcsClient
     from .coordinator import RadarCoordinator
+    from .domain.forecast import ForecastProduct
     from .domain.grid import TargetGrid
     from .domain.ports import FrameStore, LayerCache
+    from .forecast_coordinator import ForecastCoordinator
+    from .pinseries.radar_history import RadarPinHistory
     from .render.service import LayerService
+    from .store.forecast_store import FileForecastStore
 
 PROBE_PREFIX = ".probe-"
 MEDIA_DIR_KEY = "local"
+
+
+@dataclass
+class ForecastRuntime:
+    """Forecast side of a loaded entry: stored runs and series, coordinator, pin history."""
+
+    store: FileForecastStore
+    coordinator: ForecastCoordinator
+    pin_history: RadarPinHistory
+    clients: Mapping[ForecastProduct, WcsClient]
 
 
 @dataclass
@@ -41,6 +58,7 @@ class RadarRuntime:
     storage_root: Path
     version: str
     layer_cache: LayerCache
+    forecast: ForecastRuntime
 
 
 type RadarConfigEntry = ConfigEntry[RadarRuntime]

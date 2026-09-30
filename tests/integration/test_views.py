@@ -130,7 +130,7 @@ async def test_three_hours_skips_the_hole_and_counts_it(
 ) -> None:
     client = await hass_client()
     body = await _frames(client, "3h")
-    assert body["version"] == "0.1.0"
+    assert body["version"] == "0.2.0"
     assert body["grid"] == {
         "width": 1920,
         "height": 1080,
@@ -138,7 +138,7 @@ async def test_three_hours_skips_the_hole_and_counts_it(
         "center_lat": 46.6,
         "zoom": 6.4,
     }
-    assert body["basemap"] == "/meteofrance_radar/basemap.png?v=0.1.0"
+    assert body["basemap"] == "/meteofrance_radar/basemap.png?v=0.2.0"
     assert body["attribution"]["radar"] == "Météo-France"
     assert body["legend"]["unit"] == "mm/h"
     assert len(body["legend"]["levels"]) == len(body["legend"]["colors"]) + 1
@@ -155,6 +155,8 @@ async def test_three_hours_skips_the_hole_and_counts_it(
     gaps = {f["time"]: f["gap_before_min"] for f in frames if f["gap_before_min"]}
     assert gaps == {"2026-09-30T09:15:00Z": 20}
     assert body["missing"] == 3
+    forecast: dict[str, Any] = {"status": "pending", "source": "piaf", "run": None, "frames": []}
+    assert body["forecast"] == {**forecast, "now": format_iso(LATEST)}
     last = frames[-1]
     assert last["url"] == f"{LAYERS_URL}/{body['style']}/{_layer_name(LATEST)}"
     assert (await client.get(FRAMES_URL)).status == HTTPStatus.OK

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
+from .forecast import BBox, CoverageTimes, ForecastProduct, PiafRun, PinSeries
 from .models import Frame, FrameEntry
 
 
@@ -100,4 +101,70 @@ class LayerCache(Protocol):
 
     def total_bytes(self) -> int:
         """Total size of the cached layers."""
+        ...
+
+
+class CoverageSource(Protocol):
+    """One forecast WCS API (async, the aiohttp WcsClient)."""
+
+    async def describe(self, coverage_id: str) -> CoverageTimes | None:
+        """Valid times of a run, or None when the run is not published yet (404).
+
+        Raises:
+            ApiAuthError: the key is refused (401 or 403).
+            ApiError: any other failure.
+        """
+        ...
+
+    async def get_grib(self, coverage_id: str, valid: datetime, bbox: BBox) -> bytes:
+        """GRIB2 bytes of one valid time of a coverage, cut to `bbox`.
+
+        Raises:
+            ApiAuthError: the key is refused (401 or 403).
+            ApiError: any other failure, or a body that is not GRIB.
+        """
+        ...
+
+
+class ForecastStore(Protocol):
+    """Latest PIAF run layers and pin series on disk (sync, called in the executor)."""
+
+    def load(self, style: str) -> None:
+        """Create the directories, drop staging and stale runs, read what is kept."""
+        ...
+
+    def current_piaf(self) -> PiafRun | None:
+        """The latest committed PIAF run, from memory."""
+        ...
+
+    def begin_run(self, run: datetime) -> None:
+        """Start staging `run` from scratch, dropping any other staging."""
+        ...
+
+    def stage_layer(self, run: datetime, valid: datetime, png: bytes) -> None:
+        """Write the layer of one step into the staging of `run`."""
+        ...
+
+    def staged(self, run: datetime) -> list[datetime]:
+        """Valid times already staged for `run`, ascending."""
+        ...
+
+    def commit_run(self, piaf: PiafRun) -> None:
+        """Publish the staged run; keep only it and the run it replaces."""
+        ...
+
+    def read_layer(self, run: datetime, valid: datetime) -> bytes | None:
+        """Layer PNG of the current or previous run, None otherwise or when missing."""
+        ...
+
+    def pin_series(self, product: ForecastProduct) -> PinSeries | None:
+        """Saved pin series of a product, from memory."""
+        ...
+
+    def save_pin_series(self, series: PinSeries) -> None:
+        """Atomically replace the saved pin series of its product."""
+        ...
+
+    def total_bytes(self) -> int:
+        """Total size of the forecast files."""
         ...

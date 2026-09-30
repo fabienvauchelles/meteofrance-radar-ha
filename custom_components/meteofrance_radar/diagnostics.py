@@ -1,8 +1,12 @@
-"""Diagnostics: entry settings with the key redacted, collector state and storage stats."""
+"""Diagnostics: entry settings with the key redacted, collector state, storage and forecasts.
+
+The forecast section never holds the home location, pin values or request URLs.
+"""
 
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -12,9 +16,11 @@ from homeassistant.util import dt as dt_util
 
 from .api.apikey import api_key_expiry
 from .const import CONF_API_KEY
+from .domain.forecast import ForecastProduct, ProductState
 from .domain.slots import format_iso
 from .domain.tiers import tier_of
-from .runtime import RadarConfigEntry
+from .forecast_issues import active_forecast_issues
+from .runtime import ForecastRuntime, RadarConfigEntry
 
 TO_REDACT = {CONF_API_KEY}
 
@@ -71,4 +77,40 @@ async def async_get_config_entry_diagnostics(
             "oldest": format_iso(entries[0].slot) if entries else None,
             "latest": format_iso(entries[-1].slot) if entries else None,
         },
+        "forecast": await _forecast_section(hass, runtime.forecast, runtime.style),
+    }
+
+
+def _iso(t: datetime | None) -> str | None:
+    return format_iso(t) if t is not None else None
+
+
+def _product_section(state: ProductState | None, requests: int) -> dict[str, Any]:
+    return {
+        "status": str(state.status) if state else None,
+        "run": _iso(state.run) if state else None,
+        "last_success": _iso(state.last_success) if state else None,
+        "last_error": state.last_error if state else None,
+        "next_check": _iso(state.next_check) if state else None,
+        "requests_last_minute": requests,
+    }
+
+
+async def _forecast_section(
+    hass: HomeAssistant, forecast: ForecastRuntime, style: str
+) -> dict[str, Any]:
+    data = forecast.coordinator.data
+    piaf = await hass.async_add_executor_job(forecast.store.current_piaf)
+    return {
+        "products": {
+            str(product): _product_section(
+                data.of(product) if data else None,
+                forecast.clients[product].requests_last_minute,
+            )
+            for product in ForecastProduct
+        },
+        "piaf_steps": len(piaf.steps) if piaf else 0,
+        "piaf_style_ok": piaf.style == style if piaf else None,
+        "forecast_bytes": await hass.async_add_executor_job(forecast.store.total_bytes),
+        "issues": active_forecast_issues(hass),
     }

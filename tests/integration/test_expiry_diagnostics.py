@@ -23,6 +23,8 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 from custom_components.meteofrance_radar.const import CONF_API_KEY, DOMAIN, ISSUE_KEY_EXPIRING
+from custom_components.meteofrance_radar.domain.forecast import ForecastProduct
+from tests.support.forecast_api import forecast_api, mock_forecast_forbidden
 from tests.support.mf_api import (
     CATALOGUE_URL,
     FIXTURE_SLOT,
@@ -181,6 +183,43 @@ async def test_diagnostics_redact_the_key_and_describe_the_storage(
     assert storage["frames_per_kind"] == {"acrr_u16": 1}
     assert storage["latest"] == "2026-09-30T10:30:00Z"
     assert VALID_KEY not in json.dumps(diagnostics)
+
+
+async def test_diagnostics_report_the_forecasts_without_the_home(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    hass_client: ClientSessionGenerator,
+    tmp_path: Path,
+) -> None:
+    hass.config.latitude, hass.config.longitude = 48.80, 2.46
+    mock_api(aioclient_mock, FIXTURE_SLOT, dry_product(FIXTURE_SLOT))
+    mock_forecast_forbidden(aioclient_mock, ForecastProduct.PIAF)
+    forecast_api(aioclient_mock)[ForecastProduct.AROMEPI].publish(
+        datetime(2026, 9, 30, 10, tzinfo=UTC)
+    )
+    entry = await async_setup_integration(hass, tmp_path / "radar")
+
+    diagnostics = await get_diagnostics_for_config_entry(hass, hass_client, entry)
+
+    forecast = diagnostics["forecast"]
+    products = forecast["products"]
+    assert products["piaf"]["status"] == "forbidden"
+    assert products["piaf"]["next_check"] == "2026-09-30T11:33:00Z"
+    assert "HTTP 403" in products["piaf"]["last_error"]
+    assert products["aromepi"]["status"] == "ok"
+    assert products["aromepi"]["run"] == "2026-09-30T10:00:00Z"
+    assert products["aromepi"]["last_success"] == "2026-09-30T10:33:00Z"
+    assert products["aromepi"]["requests_last_minute"] == 25
+    assert products["arome"]["status"] == "pending"
+    assert products["arome"]["requests_last_minute"] == 3
+    assert forecast["piaf_steps"] == 0
+    assert forecast["piaf_style_ok"] is None
+    assert forecast["forecast_bytes"] > 0
+    assert forecast["issues"] == ["forecast_forbidden_piaf"]
+    text = json.dumps(diagnostics)
+    assert VALID_KEY not in text
+    for coordinate in ("48.8", "2.46", "2.445", "48.785"):
+        assert coordinate not in text
 
 
 async def test_diagnostics_of_an_entry_waiting_for_its_storage(

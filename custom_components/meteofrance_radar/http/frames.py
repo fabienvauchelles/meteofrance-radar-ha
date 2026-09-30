@@ -93,6 +93,7 @@ def build_frames_payload(
     style: str,
     version: str,
     home: HomeLocation | None,
+    forecast: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """JSON-ready answer of GET /api/meteofrance_radar/frames.
 
@@ -104,10 +105,12 @@ def build_frames_payload(
         style: Current layer style id.
         version: Integration version, appended to the basemap URL.
         home: HA home location, None when unset.
+        forecast: The "forecast" object (see ``http.forecast``), None when the
+            forecast runtime is not available.
 
     Returns:
-        The payload described in the design (section 7). On an empty archive, frames
-        is empty and period, latest and oldest are None.
+        The payload described in the design (section 7, and 5.1 of the 0.2.0 design).
+        On an empty archive, frames is empty and period, latest and oldest are None.
 
     Raises:
         PeriodError: period_name is not a known period.
@@ -130,4 +133,5 @@ def build_frames_payload(
         "oldest": None if oldest is None else format_iso(oldest),
         "frames": frames,
         "missing": missing,
+        "forecast": forecast,
     }

@@ -1,0 +1,67 @@
+<wcs:CoverageDescriptions xmlns:wcs="http://www.opengis.net/wcs/2.0" xmlns:swe="http://www.opengis.net/swe/2.0" xmlns:gmlrgrid="http://www.opengis.net/gml/3.3/rgrid" xmlns:gmlcov="http://www.opengis.net/gmlcov/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml/3.2" xsi:schemaLocation="     http://www.opengis.net/wcs/2.0 http://schemas.opengis.net/wcs/2.0/wcsAll.xsd     http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd     http://www.opengis.net/gmlcov/1.0 http://schemas.opengis.net/gmlcov/1.0/gmlcovAll.xsd     http://www.opengis.net/swe/2.0 http://schemas.opengis.net/sweCommon/2.0/swe.xsd     http://www.opengis.net/gml/3.3/rgrid http://schemas.opengis.net/gml/3.3/referenceableGrid.xsd">
+   <wcs:CoverageDescription gml:id="TOTAL_PRECIPITATION_RATE__GROUND_OR_WATER_SURFACE___2026-09-30T14.00.00Z">
+      <gml:boundedBy>
+         <gml:EnvelopeWithTimePeriod srsName="http://meteofrance.fr/def/crs/2DLongLat" axisLabels="long lat  time" uomLabels="deg deg  ISO8601" srsDimension="2">
+            <gml:lowerCorner>-12 37.5</gml:lowerCorner>
+            <gml:upperCorner>16 55.4</gml:upperCorner>
+            <gml:beginPosition frame="#ISO-8601">2026-09-30T14:15:00Z</gml:beginPosition>
+            <gml:endPosition frame="#ISO-8601">2026-09-30T20:00:00Z</gml:endPosition>
+         </gml:EnvelopeWithTimePeriod>
+      </gml:boundedBy>
+      <wcs:CoverageId>TOTAL_PRECIPITATION_RATE__GROUND_OR_WATER_SURFACE___2026-09-30T14.00.00Z</wcs:CoverageId>
+      <gml:domainSet>
+         <gmlrgrid:ReferenceableGridByVectors gml:id="grid_TOTAL_PRECIPITATION_RATE__GROUND_OR_WATER_SURFACE" dimension="3">
+            <gml:limits>
+               <gml:GridEnvelope>
+                  <gml:low>1 1 1</gml:low>
+                  <gml:high>2801 1791  24</gml:high>
+               </gml:GridEnvelope>
+            </gml:limits>
+            <gml:axisLabels>long lat  time</gml:axisLabels>
+            <gmlrgrid:origin>
+               <gml:Point gml:id="grid_TOTAL_PRECIPITATION_RATE__GROUND_OR_WATER_SURFACE_origin" srsDimension="3" srsName="http://meteofrance.fr/def/crs/3DLongLatTime">
+                  <gml:pos>-12 55.4  0</gml:pos>
+               </gml:Point>
+            </gmlrgrid:origin>
+            <gmlrgrid:generalGridAxis>
+               <gmlrgrid:GeneralGridAxis>
+                  <gmlrgrid:offsetVector srsDimension="3" axisLabels="long lat  time" uomLabels="deg deg  s" srsName="http://meteofrance.fr/def/crs/3DLongLatTime">0.01 0.0 0.0 0.0</gmlrgrid:offsetVector>
+                  <gmlrgrid:coefficients/>
+                  <gmlrgrid:gridAxesSpanned>long</gmlrgrid:gridAxesSpanned>
+                  <gmlrgrid:sequenceRule axisOrder="+1">Linear</gmlrgrid:sequenceRule>
+               </gmlrgrid:GeneralGridAxis>
+            </gmlrgrid:generalGridAxis>
+            <gmlrgrid:generalGridAxis>
+               <gmlrgrid:GeneralGridAxis>
+                  <gmlrgrid:offsetVector srsDimension="3" axisLabels="long lat  time" uomLabels="deg deg  s" srsName="http://meteofrance.fr/def/crs/3DLongLatTime">0.0 -0.01 0.0 0.0</gmlrgrid:offsetVector>
+                  <gmlrgrid:coefficients/>
+                  <gmlrgrid:gridAxesSpanned>lat</gmlrgrid:gridAxesSpanned>
+                  <gmlrgrid:sequenceRule axisOrder="+1">Linear</gmlrgrid:sequenceRule>
+               </gmlrgrid:GeneralGridAxis>
+            </gmlrgrid:generalGridAxis>
+            <gmlrgrid:generalGridAxis>
+               <gmlrgrid:GeneralGridAxis>
+                  <gmlrgrid:offsetVector srsDimension="3" axisLabels="long lat  time" uomLabels="deg deg  s" srsName="http://meteofrance.fr/def/crs/3DLongLatTime">0.0 0.0 0.0 1.0</gmlrgrid:offsetVector>
+                  <gmlrgrid:coefficients>900 1800 2700 3600 4500 5400 6300 7200 8100 9000 9900 10800 11700 12600 13500 14400 15300 16200 17100 18000 18900 19800 20700 21600</gmlrgrid:coefficients>
+                  <gmlrgrid:gridAxesSpanned>time</gmlrgrid:gridAxesSpanned>
+                  <gmlrgrid:sequenceRule axisOrder="+1">Linear</gmlrgrid:sequenceRule>
+               </gmlrgrid:GeneralGridAxis>
+            </gmlrgrid:generalGridAxis>
+         </gmlrgrid:ReferenceableGridByVectors>
+      </gml:domainSet>
+      <gmlcov:rangeType>
+         <swe:DataRecord>
+            <swe:field name="TOTAL_PRECIPITATION_RATE__GROUND_OR_WATER_SURFACE">
+               <swe:Quantity definition="http://codes.wmo.int/grib2/codeflag/4.2/_0-1-52">
+                  <swe:description>rainfall rate</swe:description>
+                  <swe:uom code="kg m-2 s-1"/>
+               </swe:Quantity>
+            </swe:field>
+         </swe:DataRecord>
+      </gmlcov:rangeType>
+      <wcs:ServiceParameters>
+         <wcs:CoverageSubtype>ReferenceableGridCoverage</wcs:CoverageSubtype>
+         <wcs:nativeFormat>application/wmo-grib</wcs:nativeFormat>
+      </wcs:ServiceParameters>
+   </wcs:CoverageDescription>
+</wcs:CoverageDescriptions>

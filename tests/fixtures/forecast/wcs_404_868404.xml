@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?><mw:fault xmlns:mw="http://metwork-framework.org/"><mw:code>868404</mw:code><mw:message>Synopsis backend error</mw:message><mw:description><ns0:ExceptionReport xmlns:ns0="http://www.opengis.net/ows/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.1.0" xsi:schemaLocation="http://www.opengis.net/ows/1.1 http://schemas.opengis.net/ows/1.1.0/owsAll.xsd">
+    <ns0:Exception exceptionCode="InvalidSubsetting" locator="time"><ns0:ExceptionText /></ns0:Exception>
+</ns0:ExceptionReport></mw:description></mw:fault>

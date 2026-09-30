@@ -4,13 +4,13 @@
 per Home Assistant run. ``async_setup_entry`` opens the storage root, loads the frame
 index and runs one maintenance pass, all in the executor, then starts polling. A
 Météo-France outage at startup never blocks the history already on disk, so the first
-pass is a plain refresh rather than a first refresh that could fail the setup.
+pass is a plain refresh rather than a first refresh that could fail the setup. The
+forecasts start after it, in the background, and never fail the setup either.
 Unloading or removing the entry never deletes stored frames.
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from homeassistant.core import HomeAssistant, callback
@@ -23,7 +23,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .api.client import DPRadarClient
-from .collector import BlockingRunner, Collector, free_bytes
+from .collector import Collector, free_bytes
 from .const import (
     BYTES_PER_MB,
     CONF_API_KEY,
@@ -39,6 +39,8 @@ from .decode.reproject import TableCache
 from .domain.grid import FRANCE_GRID
 from .domain.palette import style_id
 from .errors import StoragePathError
+from .forecast_issues import async_delete_forecast_issues
+from .forecast_setup import async_setup_forecast, async_start_forecast, executor_runner
 from .frontend import async_register_frontend
 from .render.service import LayerService
 from .runtime import RadarConfigEntry, RadarRuntime, prepare_storage_root, storage_root_of
@@ -55,13 +57,6 @@ class _HassClock:
 
     def now(self) -> datetime:
         return dt_util.utcnow()
-
-
-def _executor_runner(hass: HomeAssistant) -> BlockingRunner:
-    def run[T](func: Callable[[], T], /) -> Awaitable[T]:
-        return hass.async_add_executor_job(func)
-
-    return run
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -93,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RadarConfigEntry) -> boo
     except OSError as exc:
         raise ConfigEntryNotReady(f"cannot open storage {root}: {exc}") from exc
 
-    run_blocking = _executor_runner(hass)
+    run_blocking = executor_runner(hass)
     collector = Collector(
         source=DPRadarClient(async_get_clientsession(hass), entry.data[CONF_API_KEY]),
         store=store,
@@ -103,16 +98,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: RadarConfigEntry) -> boo
         run_blocking=run_blocking,
     )
     coordinator = RadarCoordinator(hass, entry, collector)
+    layers = LayerService(store, layer_cache, TableCache(), FRANCE_GRID, style)
+    try:
+        forecast = await async_setup_forecast(hass, entry, root, store, layers, coordinator)
+    except OSError as exc:
+        raise ConfigEntryNotReady(f"cannot open forecast storage under {root}: {exc}") from exc
     integration = await async_get_integration(hass, DOMAIN)
     entry.runtime_data = RadarRuntime(
         store=store,
-        layers=LayerService(store, layer_cache, TableCache(), FRANCE_GRID, style),
+        layers=layers,
         coordinator=coordinator,
         grid=FRANCE_GRID,
         style=style,
         storage_root=root,
         version=str(integration.version),
         layer_cache=layer_cache,
+        forecast=forecast,
     )
 
     @callback
@@ -125,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RadarConfigEntry) -> boo
 
     entry.async_on_unload(coordinator.async_add_listener(_keep_polling))
     await coordinator.async_refresh()
+    async_start_forecast(hass, entry)
     return True
 
 
@@ -134,5 +136,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: RadarConfigEntry) -> bo
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: RadarConfigEntry) -> None:
-    """Drop the expiring-key issue; the stored history is kept for a reinstall."""
+    """Drop the repair issues; the stored history is kept for a reinstall."""
     ir.async_delete_issue(hass, DOMAIN, ISSUE_KEY_EXPIRING)
+    async_delete_forecast_issues(hass)

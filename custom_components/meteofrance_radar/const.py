@@ -34,6 +34,25 @@ CARD_FILENAME: Final = "meteofrance-radar-card.js"
 BASEMAP_FILENAME: Final = "basemap.png"
 
 ISSUE_KEY_EXPIRING: Final = "api_key_expiring"
+ISSUE_FORECAST_FORBIDDEN: Final = "forecast_forbidden_{product}"
+TRANSLATION_FORECAST_FORBIDDEN: Final = "forecast_forbidden"
+PORTAL_URL: Final = "https://portail-api.meteofrance.fr/"
+
+PIAF_WCS_URL: Final = (
+    "https://api.meteofrance.fr/pro/piaf/1.0/wcs/MF-NWP-HIGHRES-PIAF-001-FRANCE-WCS"
+)
+AROMEPI_WCS_URL: Final = (
+    "https://public-api.meteofrance.fr/public/aromepi/1.0/wcs/MF-NWP-HIGHRES-AROMEPI-001-FRANCE-WCS"
+)
+AROME_WCS_URL: Final = (
+    "https://public-api.meteofrance.fr/public/arome/1.0/wcs/MF-NWP-HIGHRES-AROME-001-FRANCE-WCS"
+)
+FORECAST_POLL_INTERVAL: Final = timedelta(seconds=60)
+FORECAST_MAX_PER_MINUTE: Final = 90
+FORECAST_MIN_SPACING_S: Final = 0.7
+FORECAST_SUBDIR: Final = "forecast"
+URL_FORECAST_LAYERS: Final = "/api/meteofrance_radar/forecast/{style}/{run}/{name}"
+URL_PIN_SERIES: Final = "/api/meteofrance_radar/pin_series"
 
 ATTRIBUTION_RADAR: Final = "Météo-France"
 ATTRIBUTION_BASEMAP: Final = "IGN ADMIN EXPRESS 2018 (via france-geojson), Natural Earth"
