@@ -18,16 +18,29 @@ export interface Strings {
   pin: string;
   noData: string;
   legend: string;
+  forecast: string;
+  forecastLead(minutes: number): string;
+  now: string;
   attribution(radar: string, basemap: string): string;
   form: {
     default_period: string;
     autoplay: string;
     show_legend: string;
+    show_forecast: string;
     frame_duration_ms: string;
     crossfade_ms: string;
     frameHelper: string;
     crossfadeHelper: string;
   };
+}
+
+/** Lead time after "now": `+45 min` under an hour, then `+1 h 15` or `+2 h`. */
+export function formatLead(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  if (total < 60) return `+${total} min`;
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  return rest === 0 ? `+${hours} h` : `+${hours} h ${String(rest).padStart(2, "0")}`;
 }
 
 const EN: Strings = {
@@ -46,11 +59,15 @@ const EN: Strings = {
   pin: "Home",
   noData: "no data",
   legend: "Rain rate",
+  forecast: "Forecast",
+  forecastLead: (minutes) => `Forecast ${formatLead(minutes)}`,
+  now: "Now",
   attribution: (radar, basemap) => `Radar: ${radar} | Basemap: ${basemap}`,
   form: {
     default_period: "Default period",
     autoplay: "Play on load",
     show_legend: "Show the legend",
+    show_forecast: "Continue with the forecast",
     frame_duration_ms: "Time on each image (ms)",
     crossfade_ms: "Crossfade (ms)",
     frameHelper: "From 100 to 5000 ms.",
@@ -74,11 +91,15 @@ const FR: Strings = {
   pin: "Maison",
   noData: "pas de données",
   legend: "Intensité de pluie",
+  forecast: "Prévision",
+  forecastLead: (minutes) => `Prévision ${formatLead(minutes)}`,
+  now: "Maintenant",
   attribution: (radar, basemap) => `Radar : ${radar} | Fond de carte : ${basemap}`,
   form: {
     default_period: "Période par défaut",
     autoplay: "Lecture automatique",
     show_legend: "Afficher la légende",
+    show_forecast: "Continuer avec la prévision",
     frame_duration_ms: "Durée de chaque image (ms)",
     crossfade_ms: "Fondu enchaîné (ms)",
     frameHelper: "De 100 à 5000 ms.",

@@ -10,11 +10,12 @@ function levelLabel(level: number, language: "en" | "fr"): string {
 /**
  * The mm/h scale: one swatch per class, labelled with its lower bound, then the
  * "no data" swatch. The API sends one more level than colours (the upper bound of
- * the last class), which the scale does not draw. Colours come from the API so they always match the layers.
+ * the last class), which the scale does not draw. Colours come from the API so they
+ * always match the layers.
  */
 export function renderLegend(
   legend: RadarLegend,
-  strings: Strings,
+  strings: Pick<Strings, "legend" | "noData">,
   language: "en" | "fr",
 ): TemplateResult {
   return html`

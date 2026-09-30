@@ -1,13 +1,23 @@
 import { html, LitElement, type TemplateResult } from "lit";
 import { createRef } from "lit/directives/ref.js";
 import { RadarApi } from "./api";
+import {
+  BasemapSource,
+  buildViewModel,
+  DEFAULT_HEIGHT,
+  DEFAULT_WIDTH,
+  GRID_OPTIONS,
+  type GridOptions,
+  languageTag,
+  wantsFill,
+} from "./card-data";
 import { Compositor } from "./compositor";
 import { type CardConfig, DEFAULTS, type ResolvedConfig, validateConfig } from "./config";
-import { buildConfigForm, type ConfigForm, frontendLanguage, stubConfig } from "./editor";
-import { formatSlot } from "./format";
-import { languageOf, stringsFor } from "./i18n";
+import { EDITOR_TAG, stubConfig } from "./editor";
+import { ensureHaForm } from "./ha-form-loader";
 import { LayerLoader } from "./loader";
 import { Playback } from "./playback";
+import { buildPlaylist, EMPTY_PLAYLIST, type Playlist, restingIndex } from "./playlist";
 import { cardStyles } from "./styles";
 import { buildSteps, findFrame, type Step, stepUrls, titleFrame } from "./timeline";
 import {
@@ -17,11 +27,9 @@ import {
   type HomeAssistant,
   type PeriodName,
 } from "./types";
-import { type LoadState, pinPosition, renderCard, type ViewModel } from "./view";
+import { type LoadState, renderCard } from "./view";
 
 export const REFRESH_MS = 60_000;
-const DEFAULT_WIDTH = 1920;
-const DEFAULT_HEIGHT = 1080;
 
 export class MeteoFranceRadarCard extends LitElement {
   static styles = cardStyles;
@@ -33,14 +41,15 @@ export class MeteoFranceRadarCard extends LitElement {
   private _hass?: HomeAssistant;
   private _period: PeriodName = DEFAULTS.default_period;
   private _data: FramesResponse | null = null;
+  private _playlist: Playlist = EMPTY_PLAYLIST;
+  private _fill = false;
   private _state: LoadState = "loading";
   private _steps: Step[] = [];
   private _shown = 0;
   private _generation = 0;
   private _refreshTimer: number | null = null;
   private _resumeOnConnect = false;
-  private _basemapUrl: string | null = null;
-  private _basemap: ImageBitmap | null = null;
+  private readonly _basemap = new BasemapSource();
   private _compositor: Compositor | null = null;
   private readonly _canvasRef = createRef<HTMLCanvasElement>();
   private readonly _api = new RadarApi(() => this._hass);
@@ -62,8 +71,9 @@ export class MeteoFranceRadarCard extends LitElement {
     },
   );
 
-  static getConfigForm(): ConfigForm {
-    return buildConfigForm(frontendLanguage());
+  static async getConfigElement(): Promise<HTMLElement> {
+    await ensureHaForm();
+    return document.createElement(EDITOR_TAG);
   }
 
   static getStubConfig(): Partial<CardConfig> {
@@ -74,7 +84,8 @@ export class MeteoFranceRadarCard extends LitElement {
     const resolved = validateConfig(config);
     const periodChanged = this._config?.default_period !== resolved.default_period;
     this._config = resolved;
-    this._steps = this._buildSteps();
+    this._fill = wantsFill(config);
+    this._rebuild();
     if (periodChanged) {
       this._period = resolved.default_period;
       if (this.isConnected) void this._load();
@@ -86,9 +97,8 @@ export class MeteoFranceRadarCard extends LitElement {
     const previous = this._hass;
     this._hass = hass;
     if (!previous && this.isConnected && !this._data) void this._load();
-    const language = (h?: HomeAssistant) => h?.locale?.language ?? h?.language;
     if (
-      language(previous) !== language(hass) ||
+      languageTag(previous) !== languageTag(hass) ||
       previous?.config.time_zone !== hass.config.time_zone
     ) {
       this.requestUpdate();
@@ -103,8 +113,8 @@ export class MeteoFranceRadarCard extends LitElement {
     return 7;
   }
 
-  getGridOptions(): { columns: number; rows: "auto"; min_columns: number } {
-    return { columns: 12, rows: "auto", min_columns: 6 };
+  getGridOptions(): GridOptions {
+    return { ...GRID_OPTIONS };
   }
 
   connectedCallback(): void {
@@ -131,32 +141,27 @@ export class MeteoFranceRadarCard extends LitElement {
     const height = this._data?.grid.height ?? DEFAULT_HEIGHT;
     if (!this._compositor?.matches(canvas, width, height)) {
       this._compositor = new Compositor(canvas, width, height, this.seams.context2d);
-      this._compositor.setBasemap(this._basemap);
+      this._compositor.setBasemap(this._basemap.bitmap);
       this._compositor.drawBasemap();
     }
   }
 
   render(): TemplateResult {
     if (!this._config) return html``;
-    const language = languageOf(this._hass?.locale?.language ?? this._hass?.language);
-    const data = this._data;
-    const frame = this._state === "ready" ? data?.frames[this._shown] : undefined;
-    const vm: ViewModel = {
-      strings: stringsFor(language),
-      language,
+    const vm = buildViewModel({
+      config: this._config,
+      hass: this._hass,
+      data: this._data,
+      playlist: this._playlist,
       state: this._state,
-      time: frame ? formatSlot(frame.time, this._hass?.config.time_zone, language) : null,
-      gapMin: frame?.gap_before_min ?? 0,
+      shown: this._shown,
       playing: this._playback.playing,
       waiting: this._playback.waiting,
       position: this._playback.stepIndex,
-      count: this._state === "ready" ? this._steps.length : 0,
+      stepCount: this._steps.length,
       period: this._period,
-      pin: pinPosition(data),
-      aspect: (data?.grid.width ?? DEFAULT_WIDTH) / (data?.grid.height ?? DEFAULT_HEIGHT),
-      legend: this._config.show_legend ? (data?.legend ?? null) : null,
-      attribution: data?.attribution ?? null,
-    };
+      fill: this._fill,
+    });
     return renderCard(vm, {
       canvasRef: this._canvasRef,
       togglePlay: () => this._playback.toggle(),
@@ -170,16 +175,21 @@ export class MeteoFranceRadarCard extends LitElement {
     });
   }
 
-  private _buildSteps(): Step[] {
+  /** Rebuild the playlist and its timeline from the data and the config. */
+  private _rebuild(): void {
     const config = this._config ?? DEFAULTS;
-    return buildSteps(this._data?.frames ?? [], {
+    this._playlist = buildPlaylist(this._data, config.show_forecast);
+    this._steps = buildSteps(this._playlist.frames, {
       frameMs: config.frame_duration_ms,
       crossfadeMs: config.crossfade_ms,
     });
+    const last = this._playlist.frames.length - 1;
+    if (this._shown > last) this._shown = Math.max(0, last);
+    if (this._playback.stepIndex > last) this._playback.moveTo(Math.max(0, last));
   }
 
   private _refresh(): Promise<void> {
-    const shown = this._state === "ready" ? this._data?.frames[this._shown]?.time : undefined;
+    const shown = this._state === "ready" ? this._playlist.frames[this._shown]?.time : undefined;
     return this._load(shown ?? null, true);
   }
 
@@ -198,7 +208,11 @@ export class MeteoFranceRadarCard extends LitElement {
     try {
       const data = await this._api.frames(this._period);
       if (generation !== this._generation) return;
-      await this._loadBasemap(data.basemap);
+      const fetchBlob = (url: string) => this._api.blob(url);
+      const decode = (blob: Blob) => this.seams.createImageBitmap(blob);
+      if (await this._basemap.load(data.basemap, fetchBlob, decode)) {
+        this._compositor?.setBasemap(this._basemap.bitmap);
+      }
       if (generation !== this._generation) return;
       await this._install(data, keepTime);
     } catch (error) {
@@ -212,25 +226,11 @@ export class MeteoFranceRadarCard extends LitElement {
     }
   }
 
-  private async _loadBasemap(url: string): Promise<void> {
-    if (url === this._basemapUrl) return;
-    try {
-      const bitmap = await this.seams.createImageBitmap(await this._api.blob(url));
-      this._basemap?.close();
-      this._basemap = bitmap;
-      this._basemapUrl = url;
-      this._compositor?.setBasemap(bitmap);
-    } catch (error) {
-      // Rain over a blank background still beats no radar at all.
-      console.warn("meteofrance-radar-card: basemap failed", error);
-    }
-  }
-
   private async _install(data: FramesResponse, keepTime: string | null): Promise<void> {
     this._data = data;
-    this._steps = this._buildSteps();
+    this._rebuild();
     this._compositor?.reset();
-    const frames = data.frames;
+    const frames = this._playlist.frames;
     if (frames.length === 0) {
       this._playback.pause();
       this._state = "empty";
@@ -242,7 +242,8 @@ export class MeteoFranceRadarCard extends LitElement {
     this._state = "ready";
     const autoplay = keepTime === null && (this._config?.autoplay ?? DEFAULTS.autoplay);
     const times = frames.map((frame) => frame.time);
-    const index = keepTime !== null ? findFrame(times, keepTime) : autoplay ? 0 : frames.length - 1;
+    const kept = keepTime !== null ? findFrame(times, keepTime) : null;
+    const index = restingIndex(this._playlist, kept, autoplay);
     this._shown = index;
     // A refresh during playback leaves the clock alone unless the frame moved.
     if (!this._playback.playing || index !== this._playback.stepIndex) this._playback.moveTo(index);
@@ -254,7 +255,7 @@ export class MeteoFranceRadarCard extends LitElement {
   }
 
   private _urls(): string[] {
-    return (this._data?.frames ?? []).map((frame) => frame.url);
+    return this._playlist.frames.map((frame) => frame.url);
   }
 
   private _render(stepIndex: number, weight: number): boolean {

@@ -45,7 +45,7 @@ describe("registration", () => {
     expect(entries[0]?.preview).toBe(true);
     const card = document.createElement(TAG) as Card;
     expect(card.getCardSize()).toBe(7);
-    expect(card.getGridOptions()).toMatchObject({ columns: 12, rows: "auto" });
+    expect(card.getGridOptions()).toMatchObject({ columns: 12, rows: "auto", min_rows: 4 });
   });
 });
 
@@ -56,6 +56,7 @@ describe("setConfig", () => {
     [{ default_period: "1h" }],
     [{ autoplay: "yes" }],
     [{ show_legend: 1 }],
+    [{ show_forecast: "no" }],
     [{ frame_duration_ms: 50 }],
     [{ frame_duration_ms: "500" }],
     [{ crossfade_ms: 2500 }],
@@ -72,6 +73,7 @@ describe("setConfig", () => {
         default_period: "7d",
         autoplay: false,
         show_legend: false,
+        show_forecast: false,
         frame_duration_ms: 200,
         crossfade_ms: 2000,
         grid_options: { columns: 6 },

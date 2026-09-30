@@ -3,6 +3,7 @@ import "../src/index";
 import type { CardConfig } from "../src/config";
 import type {
   CardSeams,
+  ForecastInfo,
   FramesResponse,
   HomeAssistant,
   PeriodName,
@@ -39,6 +40,31 @@ export function makeFrames(
       url: `/api/meteofrance_radar/layers/${STYLE}/${slot}Z.png`,
     };
   });
+}
+
+/** A PIAF run whose frames come `leads` minutes after `now`. */
+export function makeForecast(
+  leads: number[],
+  now = "2026-09-30T10:30:00Z",
+  run = "2026-09-30T10:15:00Z",
+): ForecastInfo {
+  const base = Date.parse(now);
+  const runSlot = run.slice(0, 16).replace(/[-:]/g, "");
+  return {
+    status: "ok",
+    source: "piaf",
+    run,
+    now,
+    frames: leads.map((lead) => {
+      const time = new Date(base + lead * 60_000);
+      const slot = time.toISOString().slice(0, 16).replace(/[-:]/g, "");
+      return {
+        time: time.toISOString().replace(".000Z", "Z"),
+        lead_min: lead,
+        url: `/api/meteofrance_radar/forecast/${STYLE}/${runSlot}Z/${slot}Z.png`,
+      };
+    }),
+  };
 }
 
 export function makeResponse(
@@ -125,7 +151,7 @@ export function makeSeams(): FakeSeams {
     clearRect: vi.fn(),
     drawImage: vi.fn((image: unknown) => {
       const url = (image as { url?: string }).url;
-      if (url?.includes("/layers/")) last = url;
+      if (url?.includes("/layers/") || url?.includes("/forecast/")) last = url;
     }),
   } as unknown as CanvasRenderingContext2D;
   const seams: CardSeams = {

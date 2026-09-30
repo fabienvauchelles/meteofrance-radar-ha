@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatSlot } from "../src/format";
+import { formatLead } from "../src/i18n";
 
 describe("formatSlot", () => {
   it("writes the slot in Paris time, French and English style", () => {
@@ -24,5 +25,16 @@ describe("formatSlot", () => {
     expect(formatSlot("2026-09-30T10:30:00Z", "Mars/Olympus", "en")).toMatch(
       /^30\/09\/26 \d\d:30$/,
     );
+  });
+});
+
+describe("formatLead", () => {
+  it("counts minutes under an hour, then hours and minutes", () => {
+    expect(formatLead(5)).toBe("+5 min");
+    expect(formatLead(45)).toBe("+45 min");
+    expect(formatLead(60)).toBe("+1 h");
+    expect(formatLead(65)).toBe("+1 h 05");
+    expect(formatLead(75)).toBe("+1 h 15");
+    expect(formatLead(180)).toBe("+3 h");
   });
 });

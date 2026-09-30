@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildPlaylist, nowPercent, restingIndex } from "../src/playlist";
 import { buildSteps, findFrame, stepUrls, titleFrame, weightAt, wrapIndex } from "../src/timeline";
+import { makeForecast, makeFrames, makeResponse } from "./harness";
 
 const frames = (gaps: number[]) => gaps.map((gap_before_min) => ({ gap_before_min }));
 
@@ -73,5 +75,47 @@ describe("navigation helpers", () => {
     expect(stepUrls(steps, ["a", "b"], 0)).toEqual(["a", "b"]);
     expect(stepUrls(steps, ["a", "b"], 1)).toEqual(["b", null]);
     expect(stepUrls(steps, ["a", "b"], 2)).toBeNull();
+  });
+});
+
+describe("the playlist", () => {
+  const response = makeResponse(makeFrames(3, undefined, { 0: 0 }), {
+    forecast: makeForecast([5, 10]),
+  });
+
+  it("follows the observed frames with the forecast, crossfading into it", () => {
+    const playlist = buildPlaylist(response, true);
+    expect(playlist.frames.map((frame) => [frame.forecast, frame.lead_min])).toEqual([
+      [false, null],
+      [false, null],
+      [false, null],
+      [true, 5],
+      [true, 10],
+    ]);
+    expect(playlist.nowIndex).toBe(2);
+    expect(nowPercent(playlist)).toBe(50);
+    const steps = buildSteps(playlist.frames, { frameMs: 500, crossfadeMs: 300 });
+    expect(steps.map((step) => step.next)).toEqual([1, 2, 3, 4, null]);
+  });
+
+  it("rests on the kept frame, the first one when playing, else on now", () => {
+    const playlist = buildPlaylist(response, true);
+    expect(restingIndex(playlist, 1, false)).toBe(1);
+    expect(restingIndex(playlist, null, true)).toBe(0);
+    expect(restingIndex(playlist, null, false)).toBe(2);
+  });
+
+  it("has no now marker without forecast frames", () => {
+    const observed = buildPlaylist(response, false);
+    expect(observed.frames).toHaveLength(3);
+    expect(nowPercent(observed)).toBeNull();
+    expect(buildPlaylist(null, true)).toEqual({ frames: [], nowIndex: -1, forecastCount: 0 });
+  });
+
+  it("starts on the first forecast frame when nothing was observed", () => {
+    const only = buildPlaylist(makeResponse([], { forecast: makeForecast([5]) }), true);
+    expect(only.nowIndex).toBe(-1);
+    expect(nowPercent(only)).toBeNull();
+    expect(restingIndex(only, null, false)).toBe(0);
   });
 });

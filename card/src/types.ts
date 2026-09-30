@@ -32,6 +32,23 @@ export interface RadarLegend {
   nodata_color: string;
 }
 
+/** One step of the latest PIAF nowcast run, after the "now" slot. */
+export interface ForecastFrame {
+  time: string;
+  /** Minutes from the "now" slot. */
+  lead_min: number;
+  url: string;
+}
+
+export interface ForecastInfo {
+  status: string;
+  source: string;
+  run: string | null;
+  /** Slot the slider marks as "now". */
+  now: string;
+  frames: ForecastFrame[];
+}
+
 export interface FramesResponse {
   version: string;
   style: string;
@@ -45,6 +62,8 @@ export interface FramesResponse {
   oldest: string | null;
   frames: RadarFrame[];
   missing: number;
+  /** Absent from a 0.1.0 server, null when forecasts are off. */
+  forecast?: ForecastInfo | null;
 }
 
 /** The part of the frontend `hass` object this card uses. */

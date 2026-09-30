@@ -14,6 +14,12 @@ export interface ViewModel {
   /** Formatted time of the frame on screen, null before the first draw. */
   time: string | null;
   gapMin: number;
+  /** Minutes after "now" when a forecast frame is on screen, else null. */
+  leadMin: number | null;
+  /** Slider position of the "now" marker in percent, null without forecast frames. */
+  nowPct: number | null;
+  /** The dashboard gives the card a fixed height (numeric grid rows). */
+  fill: boolean;
   playing: boolean;
   waiting: boolean;
   position: number;
@@ -48,6 +54,11 @@ function renderTitle(vm: ViewModel): TemplateResult {
   return html`
     <div class="title">
       ${vm.time ? html`<span class="time">${vm.time}</span>` : nothing}
+      ${
+        vm.leadMin !== null
+          ? html`<span class="badge">${strings.forecastLead(vm.leadMin)}</span>`
+          : nothing
+      }
       <span class="credit">${strings.credit}</span>
       ${vm.gapMin > 0 ? html`<span class="gap" role="note">${strings.gap(vm.gapMin)}</span>` : nothing}
     </div>
@@ -67,16 +78,55 @@ function renderMessage(vm: ViewModel): TemplateResult | typeof nothing {
 function renderStage(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
   const pin = vm.pin;
   const pinStyle = pin ? { left: `${pin.left}%`, top: `${pin.top}%` } : {};
+  // In fill mode the stage takes the height left by the controls and the map keeps
+  // its own ratio inside it, so the pin percentages still land on the right pixel.
+  const aspect = String(vm.aspect);
+  const stageStyle = vm.fill ? { "--map-aspect": aspect } : { "aspect-ratio": aspect };
+  const forecast = vm.leadMin !== null;
   return html`
-    <div class="stage" style=${styleMap({ "aspect-ratio": String(vm.aspect) })}>
-      <canvas ${ref(handlers.canvasRef)}></canvas>
-      <div
-        class="pin"
-        title=${vm.strings.pin}
-        ?hidden=${pin === null}
-        style=${styleMap(pinStyle)}
-      ></div>
+    <div class="stage ${forecast ? "forecast" : ""}" style=${styleMap(stageStyle)}>
+      <div class="map">
+        <canvas ${ref(handlers.canvasRef)}></canvas>
+        <div
+          class="pin"
+          title=${vm.strings.pin}
+          ?hidden=${pin === null}
+          style=${styleMap(pinStyle)}
+        ></div>
+        ${forecast ? html`<div class="banner" role="note">${vm.strings.forecast}</div>` : nothing}
+      </div>
       ${renderMessage(vm)}
+    </div>
+  `;
+}
+
+function renderSlider(vm: ViewModel, handlers: ViewHandlers, disabled: boolean): TemplateResult {
+  const nowPct = vm.nowPct;
+  return html`
+    <div class="slider">
+      <input
+        type="range"
+        min="0"
+        max=${Math.max(0, vm.count - 1)}
+        step="1"
+        aria-label=${vm.strings.timeSlider}
+        ?disabled=${disabled}
+        .value=${String(vm.position)}
+        @input=${(event: Event) => handlers.scrub(Number((event.target as HTMLInputElement).value))}
+        @change=${handlers.scrubEnd}
+      />
+      ${
+        nowPct !== null
+          ? html`<div class="marks">
+              <div class="forecast-track" style=${styleMap({ left: `${nowPct}%` })}></div>
+              <div
+                class="now-marker"
+                title=${vm.strings.now}
+                style=${styleMap({ left: `${nowPct}%` })}
+              ></div>
+            </div>`
+          : nothing
+      }
     </div>
   `;
 }
@@ -107,17 +157,7 @@ function renderControls(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
         title=${strings.stepForward}
         @click=${() => handlers.step(1)}
       >⏭</button>
-      <input
-        type="range"
-        min="0"
-        max=${Math.max(0, vm.count - 1)}
-        step="1"
-        aria-label=${strings.timeSlider}
-        ?disabled=${disabled}
-        .value=${String(vm.position)}
-        @input=${(event: Event) => handlers.scrub(Number((event.target as HTMLInputElement).value))}
-        @change=${handlers.scrubEnd}
-      />
+      ${renderSlider(vm, handlers, disabled)}
     </div>
   `;
 }
@@ -142,7 +182,7 @@ function renderPeriods(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
 export function renderCard(vm: ViewModel, handlers: ViewHandlers): TemplateResult {
   const attribution = vm.attribution;
   return html`
-    <ha-card>
+    <ha-card class=${vm.fill ? "fill" : ""}>
       ${renderTitle(vm)} ${renderStage(vm, handlers)} ${renderControls(vm, handlers)}
       ${renderPeriods(vm, handlers)}
       ${vm.legend ? renderLegend(vm.legend, vm.strings, vm.language) : nothing}
