@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Home Assistant 2026.8 needs Python 3.14; uv provisions it from .python-version.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: card/package-lock.json
+
+      - name: Provision the environment (uv sync, npm ci)
+        run: make build
+
+      - name: Gate (ruff, mypy, pytest, biome, tsc, vitest, rollup)
+        run: make check
+
+      # make check rebuilds the committed card bundle; a diff means the commit
+      # carries a bundle built from other sources.
+      - name: Card bundle is up to date
+        run: git diff --exit-code -- custom_components/meteofrance_radar/www/
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate the manifest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate for HACS
+        uses: hacs/action@main
+        with:
+          category: integration

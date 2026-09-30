@@ -1,0 +1,50 @@
+name: Release
+
+# On a published release, rebuild the Lovelace card, zip the integration into
+# meteofrance_radar.zip (with the card bundle inside www/) and attach it to the
+# release. HACS extracts the asset (hacs.json: zip_release) into
+# config/custom_components/meteofrance_radar/, so the archive carries the
+# integration files at its root, not under a custom_components/ prefix.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Assemble and attach meteofrance_radar.zip
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: card/package-lock.json
+
+      - name: Build the card bundle
+        working-directory: card
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Check the bundle and basemap are in the integration
+        run: |
+          test -f custom_components/meteofrance_radar/www/meteofrance-radar-card.js
+          test -f custom_components/meteofrance_radar/www/basemap.png
+
+      - name: Assemble meteofrance_radar.zip
+        run: >
+          cd custom_components/meteofrance_radar &&
+          zip -r "$GITHUB_WORKSPACE/meteofrance_radar.zip" . -x '*/__pycache__/*' '*.pyc'
+
+      - name: Attach meteofrance_radar.zip to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" meteofrance_radar.zip --clobber

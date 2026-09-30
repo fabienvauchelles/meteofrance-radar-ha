@@ -1,0 +1,29 @@
+{
+ "_status": 200,
+ "_date": "Wed, 30 Sep 2026 10:27:50 GMT",
+ "title": "Données mosaïque radar de LAME_D_EAU pour la zone METROPOLE à la fréquence 5 minutes",
+ "description": "Mosaïque de lame d'eau METROPOLE et pour la date (TU) la plus récente.",
+ "attribution": "Source : Météo-France",
+ "links": [
+  {
+   "href": "https://public-api.meteofrance.fr/public/DPRadar/mosaiques/METROPOLE/observations/LAME_D_EAU",
+   "rel": "self",
+   "type": "application/json",
+   "title": "Ce document"
+  },
+  {
+   "href": "https://public-api.meteofrance.fr/public/DPRadar/mosaiques/METROPOLE/observations/LAME_D_EAU/produit?maille=1000",
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+   "type": "application/octet-stream+gzip",
+   "title": "Mosaïque radar de LAME_D_EAU pour la zone METROPOLE et à la maille 1000 du 2026-09-30T10:25:00Z",
+   "validity_time": "2026-09-30T10:25:00Z"
+  },
+  {
+   "href": "https://public-api.meteofrance.fr/public/DPRadar/mosaiques/METROPOLE/observations/LAME_D_EAU/produit?maille=500",
+   "rel": "http://www.opengis.net/def/rel/ogc/1.0/data",
+   "type": "application/x-hdf",
+   "title": "Mosaïque radar de LAME_D_EAU pour la zone METROPOLE et à la maille 500 du 2026-09-30T10:25:00Z",
+   "validity_time": "2026-09-30T10:25:00Z"
+  }
+ ]
+}

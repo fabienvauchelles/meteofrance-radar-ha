@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Météo-France Radar",
+        "description": "Collez votre clé pour l'API DPRadar de Météo-France (public-api.meteofrance.fr).",
+        "data": {
+          "api_key": "Clé d'API"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Météo-France a refusé cette clé d'API.",
+      "cannot_connect": "Impossible de joindre l'API Météo-France.",
+      "key_expired": "Cette clé d'API a expiré. Générez-en une nouvelle sur le portail Météo-France."
+    },
+    "abort": {
+      "single_instance_allowed": "Météo-France Radar est déjà configuré."
+    }
+  }
+}

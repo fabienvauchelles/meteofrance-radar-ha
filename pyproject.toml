@@ -1,0 +1,62 @@
+# Quality gate configuration for the integration. One Python area
+# (custom_components/meteofrance_radar plus its tests), one virtualenv managed by uv.
+# The project is not a distributable package: Home Assistant loads the integration
+# from custom_components/, so uv only manages the development environment.
+
+[project]
+name = "meteofrance-radar-ha"
+version = "0.1.0"
+description = "Home Assistant integration and card playing the Météo-France rain radar"
+requires-python = ">=3.14.2,<3.15"
+license = "LicenseRef-FSL-1.1-MIT"
+dependencies = []
+
+[dependency-groups]
+# Keep in step with requirements-test.txt. pytest-homeassistant-custom-component
+# pins the exact homeassistant and pytest-asyncio versions it was built against.
+# pyproj is test-only: an independent reference for the numpy projection.
+dev = [
+    "pytest-homeassistant-custom-component==0.13.354",
+    "homeassistant==2026.8.0",
+    "pytest-asyncio==1.4.0",
+    "h5py==3.16.0",
+    "pyproj==3.8.0",
+    "ruff",
+    "mypy",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+# Home Assistant ships py.typed but does not re-export every name through __all__.
+implicit_reexport = true
+warn_unused_configs = true
+files = ["custom_components/meteofrance_radar", "tests"]
+# custom_components is a namespace package: resolve modules from the repo root.
+mypy_path = "$MYPY_CONFIG_FILE_DIR"
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["h5py", "h5py.*", "pyproj", "pyproj.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["error"]
+# The recorder logs every SQL statement at INFO, which buries the gate output.
+log_level = "WARNING"

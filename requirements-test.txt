@@ -1,0 +1,11 @@
+# Test dependencies, the same pins as the dev group in pyproject.toml (the Makefile
+# uses `uv sync`; this file serves a plain `pip install -r`).
+# pytest-homeassistant-custom-component 0.13.354 is built against Home Assistant
+# 2026.8.0 and pytest-asyncio 1.4.0; the two lines below restate that pin.
+# h5py is the integration's runtime requirement (manifest.json). pyproj is a
+# test-only reference for the numpy polar stereographic projection.
+pytest-homeassistant-custom-component==0.13.354
+homeassistant==2026.8.0
+pytest-asyncio==1.4.0
+h5py==3.16.0
+pyproj==3.8.0

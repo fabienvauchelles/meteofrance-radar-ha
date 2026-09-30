@@ -1,0 +1,15 @@
+{
+  "domain": "meteofrance_radar",
+  "name": "Météo-France Radar",
+  "after_dependencies": ["lovelace"],
+  "codeowners": ["@fabienvauchelles"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/fabienvauchelles/meteofrance-radar-ha",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/fabienvauchelles/meteofrance-radar-ha/issues",
+  "requirements": ["h5py==3.16.0"],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

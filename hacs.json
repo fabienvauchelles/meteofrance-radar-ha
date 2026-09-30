@@ -1,0 +1,7 @@
+{
+  "name": "Météo-France Radar",
+  "homeassistant": "2026.8.0",
+  "render_readme": true,
+  "zip_release": true,
+  "filename": "meteofrance_radar.zip"
+}
