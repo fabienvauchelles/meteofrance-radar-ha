@@ -3,7 +3,9 @@
 Values are gathered through the reprojection table before any arithmetic, so the
 decoding rules only run on the 2 million target pixels, not the 12 million source
 cells. Nearest-neighbour gather and the pointwise classification commute, which makes
-a frame render identically before and after its downgrade to class indices.
+a frame render identically before and after its downgrade to class indices. A
+downgraded frame is read with the levels stored in its own file, mapped onto the
+current classes, so a later palette change never misreads older history.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from numpy.typing import NDArray
 
 from ..decode.reproject import ReprojectionTable
 from ..domain.models import AcrrFrame, ClassFrame, Frame
-from ..domain.palette import NODATA_INDEX, classify
+from ..domain.palette import NODATA_INDEX, class_remap, classify
 from ..domain.rate import acrr_rate
 from ..errors import InvalidProductError
 from .png import encode_layer_png
@@ -39,8 +41,7 @@ def _acrr_indices(frame: AcrrFrame, table: ReprojectionTable) -> NDArray[np.uint
 
 def _class_indices(frame: ClassFrame, table: ReprojectionTable) -> NDArray[np.uint8]:
     _check_shape(frame, frame.idx.shape)
-    idx = frame.idx[table.idx_r, table.idx_c]
-    idx[idx > NODATA_INDEX] = NODATA_INDEX
+    idx = class_remap(frame.levels_mmh)[frame.idx[table.idx_r, table.idx_c]]
     idx[~table.valid] = NODATA_INDEX
     return idx
 

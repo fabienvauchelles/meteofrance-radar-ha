@@ -52,6 +52,11 @@ class LayerService:
         """The current style id, part of every layer URL."""
         return self._style
 
+    @property
+    def table_count(self) -> int:
+        """Reprojection tables held in memory, for diagnostics."""
+        return len(self._tables)
+
     def get_layer(self, style: str, slot: datetime) -> bytes:
         """Return the layer PNG for `slot`. Blocking: call it in the executor.
 

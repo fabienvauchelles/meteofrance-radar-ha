@@ -9,6 +9,7 @@ answer 503 while no entry is loaded instead of disappearing.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Final
 
@@ -35,6 +36,9 @@ LAYER_NAME: Final = re.compile(r"^(\d{8}T\d{4}Z)\.png$")
 LAYER_CACHE_CONTROL: Final = "private, max-age=31536000, immutable"
 PNG_CONTENT_TYPE: Final = "image/png"
 PERIOD_PARAM: Final = "period"
+RENDER_FAILED: Final = "cannot render layer"
+# Slots whose render failure was already logged in full; later failures log at debug.
+MAX_REPORTED_FAILURES: Final = 256
 
 
 @callback
@@ -104,6 +108,9 @@ class LayerView(HomeAssistantView):
     name = f"api:{DOMAIN}:layer"
     requires_auth = True
 
+    def __init__(self) -> None:
+        self._reported: set[datetime] = set()
+
     async def get(self, request: web.Request, style: str, name: str) -> web.Response:
         """Answer the PNG of a slot with an immutable, private cache header."""
         hass = request.app[KEY_HASS]
@@ -124,14 +131,36 @@ class LayerView(HomeAssistantView):
         except SlotNotFoundError:
             return _error(f"no frame for slot {format_slot(slot)}", HTTPStatus.NOT_FOUND)
         except (InvalidProductError, FrameFormatError) as err:
-            LOGGER.error("Cannot render the layer of slot %s: %s", format_slot(slot), err.message)
-            return _error(
-                "cannot render layer",
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                slot=format_slot(slot),
-            )
+            self._log_failure(slot, "Cannot render the layer of slot %s: %s", err.message)
+            return _render_failed(slot)
+        except Exception:
+            # The card retries a failed layer on every loop: log the traceback once per
+            # slot, and never send it to the client.
+            self._log_failure(slot, "Unexpected error rendering the layer of slot %s", None)
+            return _render_failed(slot)
         return web.Response(
             body=png,
             content_type=PNG_CONTENT_TYPE,
             headers={"Cache-Control": LAYER_CACHE_CONTROL},
         )
+
+    def _log_failure(self, slot: datetime, message: str, detail: str | None) -> None:
+        """Log a render failure in full the first time for a slot, at debug afterwards.
+
+        Called from an ``except`` block, so the traceback of the failure is attached.
+        """
+        args = (format_slot(slot), detail) if detail is not None else (format_slot(slot),)
+        if slot in self._reported:
+            LOGGER.debug(message, *args, exc_info=True)
+            return
+        if len(self._reported) >= MAX_REPORTED_FAILURES:
+            self._reported.clear()
+        self._reported.add(slot)
+        if detail is None:
+            LOGGER.exception(message, *args)
+        else:
+            LOGGER.error(message, *args)
+
+
+def _render_failed(slot: datetime) -> web.Response:
+    return _error(RENDER_FAILED, HTTPStatus.INTERNAL_SERVER_ERROR, slot=format_slot(slot))

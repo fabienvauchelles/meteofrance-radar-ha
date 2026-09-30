@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from typing import Final
 
 import numpy as np
@@ -32,6 +33,7 @@ NODATA_ALPHA: Final = 51
 DRY_RGB: Final[tuple[int, int, int]] = (0, 0, 0)
 TOP_CLASS: Final = len(COLORS)
 STYLE_ID_LENGTH: Final = 10
+INDEX_SPACE: Final = 256
 LEGEND_UNIT: Final = "mm/h"
 # Bump whenever decode, reprojection, classification or PNG encoding changes the pixels.
 RENDER_VERSION = 1
@@ -46,6 +48,22 @@ def classify(rate: NDArray[np.float32]) -> NDArray[np.uint8]:
     idx = np.clip(np.digitize(rate, LEVELS_MMH), 0, TOP_CLASS).astype(np.uint8)
     idx[np.isnan(rate)] = NODATA_INDEX
     return idx
+
+
+def class_remap(levels_mmh: Sequence[float]) -> NDArray[np.uint8]:
+    """Lookup table from the indices of a frame classified with `levels_mmh` to current ones.
+
+    A downgraded frame stores the levels it was classified with. Its class k (1 to
+    len(levels_mmh) - 1) covers rates from levels_mmh[k - 1] up, so it takes the current
+    class holding that lower bound. With the current levels the table is the identity.
+    Dry stays 0; no data and any index outside the stored classes become NODATA_INDEX.
+    """
+    lut = np.full(INDEX_SPACE, NODATA_INDEX, dtype=np.uint8)
+    lut[0] = 0
+    classes = max(0, min(len(levels_mmh) - 1, NODATA_INDEX - 1))
+    bounds = np.asarray(levels_mmh[:classes], dtype=np.float32)
+    lut[1 : classes + 1] = classify(bounds)
+    return lut
 
 
 def _hex_to_rgb(color: str) -> tuple[int, int, int]:

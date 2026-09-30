@@ -7,7 +7,9 @@ written to disk. Building one for the France grid takes about 0.1 s and 19 MB.
 from __future__ import annotations
 
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass
+from typing import Final
 
 import numpy as np
 from numpy.typing import NDArray
@@ -17,6 +19,8 @@ from ..domain.models import SourceGrid
 from .stereo import parse_projdef
 
 UPPER_LEFT = "UL"
+# Products share one source grid; a second slot covers a grid change in the archive.
+DEFAULT_MAX_TABLES: Final = 2
 
 
 @dataclass(frozen=True)
@@ -66,11 +70,30 @@ def build_table(source: SourceGrid, target: TargetGrid) -> ReprojectionTable:
 
 
 class TableCache:
-    """Thread-safe in-memory cache of reprojection tables, one per grid pair."""
+    """Thread-safe in-memory LRU cache of reprojection tables, one per grid pair.
 
-    def __init__(self) -> None:
-        self._tables: dict[tuple[str, str], ReprojectionTable] = {}
+    A table weighs about 19 MB for the France grid. The cache holds at most
+    `max_tables` of them and drops the least recently used one beyond that, so a
+    history spanning several source grids cannot grow memory without limit.
+
+    Args:
+        max_tables: Most tables kept at once, at least 1.
+
+    Raises:
+        ValueError: `max_tables` is below 1.
+    """
+
+    def __init__(self, max_tables: int = DEFAULT_MAX_TABLES) -> None:
+        if max_tables < 1:
+            raise ValueError(f"max_tables must be at least 1, got {max_tables}")
+        self._max_tables = max_tables
+        self._tables: OrderedDict[tuple[str, str], ReprojectionTable] = OrderedDict()
         self._lock = threading.Lock()
+
+    def __len__(self) -> int:
+        """Number of tables currently held."""
+        with self._lock:
+            return len(self._tables)
 
     def get(self, source: SourceGrid, target: TargetGrid) -> ReprojectionTable:
         """Return the table for this grid pair, building it on first use.
@@ -81,7 +104,11 @@ class TableCache:
         key = (source.key(), target.key())
         with self._lock:
             table = self._tables.get(key)
-            if table is None:
-                table = build_table(source, target)
-                self._tables[key] = table
+            if table is not None:
+                self._tables.move_to_end(key)
+                return table
+            table = build_table(source, target)
+            self._tables[key] = table
+            while len(self._tables) > self._max_tables:
+                self._tables.popitem(last=False)
             return table

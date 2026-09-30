@@ -55,7 +55,12 @@ async def async_get_config_entry_diagnostics(
             ),
             "last_error": state.last_error if state else None,
         },
-        "render": {"style": runtime.style, "grid": runtime.grid.key(), "version": runtime.version},
+        "render": {
+            "style": runtime.style,
+            "grid": runtime.grid.key(),
+            "version": runtime.version,
+            "tables": runtime.layers.table_count,
+        },
         "storage": {
             "root": str(runtime.storage_root),
             "frames": len(entries),
