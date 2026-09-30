@@ -3,9 +3,32 @@
     "step": {
       "user": {
         "title": "Météo-France Radar",
-        "description": "Collez votre clé pour l'API DPRadar de Météo-France (public-api.meteofrance.fr).",
+        "description": "Collez votre clé pour l'API DPRadar de Météo-France. Elle est vérifiée auprès de l'API avant l'ajout de l'intégration.",
         "data": {
           "api_key": "Clé d'API"
+        },
+        "data_description": {
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Nouvelle clé d'API",
+        "description": "Météo-France n'accepte plus la clé actuelle, ou elle va bientôt expirer. Collez-en une nouvelle. L'historique radar déjà enregistré est conservé.",
+        "data": {
+          "api_key": "Clé d'API"
+        },
+        "data_description": {
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
+        }
+      },
+      "reconfigure": {
+        "title": "Changer la clé d'API",
+        "description": "Collez la nouvelle clé. L'historique radar déjà enregistré est conservé.",
+        "data": {
+          "api_key": "Clé d'API"
+        },
+        "data_description": {
+          "api_key": "Générée sur portail-api.meteofrance.fr après l'abonnement à l'API DPRadar."
         }
       }
     },
@@ -15,7 +38,45 @@
       "key_expired": "Cette clé d'API a expiré. Générez-en une nouvelle sur le portail Météo-France."
     },
     "abort": {
-      "single_instance_allowed": "Météo-France Radar est déjà configuré."
+      "single_instance_allowed": "Météo-France Radar est déjà configuré.",
+      "reauth_successful": "La clé d'API a été mise à jour.",
+      "reconfigure_successful": "La clé d'API a été mise à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stockage",
+        "description": "Les images radar sont enregistrées dans ce dossier. Le changer ne déplace pas les images déjà enregistrées : l'ancien dossier reste tel quel.",
+        "data": {
+          "storage_path": "Dossier de stockage",
+          "size_cap_mb": "Taille maximale"
+        },
+        "data_description": {
+          "storage_path": "Chemin absolu. Gardez-le hors de /config pour que les sauvegardes restent légères.",
+          "size_cap_mb": "Au-delà de cette taille, les images les plus anciennes sont supprimées en premier."
+        }
+      }
+    },
+    "error": {
+      "path_not_absolute": "Le chemin doit être absolu (commencer par /).",
+      "path_not_writable": "Impossible de créer ce dossier ou d'y écrire."
+    }
+  },
+  "issues": {
+    "api_key_expiring": {
+      "title": "La clé d'API Météo-France expire bientôt",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "La clé d'API Météo-France expire bientôt",
+            "description": "La clé d'API Météo-France expire le {expiry}. Générez une nouvelle clé sur le portail Météo-France, puis validez pour la saisir. Sans nouvelle clé, le radar cesse de se mettre à jour ce jour-là."
+          }
+        },
+        "abort": {
+          "entry_not_found": "L'intégration Météo-France Radar n'est plus configurée."
+        }
+      }
     }
   }
 }

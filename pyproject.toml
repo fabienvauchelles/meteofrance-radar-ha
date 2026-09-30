@@ -50,13 +50,22 @@ mypy_path = "$MYPY_CONFIG_FILE_DIR"
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["h5py", "h5py.*", "pyproj", "pyproj.*"]
+module = ["h5py", "pyproj", "pyproj.*"]
+ignore_missing_imports = true
+
+# The HA test harness ships no py.typed marker.
+[[tool.mypy.overrides]]
+module = ["pytest_homeassistant_custom_component.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # Home Assistant 2026.8 core stores hass on the aiohttp app with a plain string key.
+    "ignore::aiohttp.web_exceptions.NotAppKeyWarning",
+]
 # The recorder logs every SQL statement at INFO, which buries the gate output.
 log_level = "WARNING"

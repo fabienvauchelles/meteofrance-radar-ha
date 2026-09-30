@@ -3,9 +3,32 @@
     "step": {
       "user": {
         "title": "Météo-France Radar",
-        "description": "Paste your API key for the Météo-France DPRadar API (public-api.meteofrance.fr).",
+        "description": "Paste your key for the Météo-France DPRadar API. It is checked against the API before the integration is added.",
         "data": {
           "api_key": "API key"
+        },
+        "data_description": {
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
+        }
+      },
+      "reauth_confirm": {
+        "title": "New API key",
+        "description": "Météo-France no longer accepts the current key, or it is about to expire. Paste a new one. The radar history already stored is kept.",
+        "data": {
+          "api_key": "API key"
+        },
+        "data_description": {
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
+        }
+      },
+      "reconfigure": {
+        "title": "Change the API key",
+        "description": "Paste the new key. The radar history already stored is kept.",
+        "data": {
+          "api_key": "API key"
+        },
+        "data_description": {
+          "api_key": "Generated on portail-api.meteofrance.fr after subscribing to the DPRadar API."
         }
       }
     },
@@ -15,7 +38,45 @@
       "key_expired": "This API key has expired. Generate a new one on the Météo-France portal."
     },
     "abort": {
-      "single_instance_allowed": "Météo-France Radar is already configured."
+      "single_instance_allowed": "Météo-France Radar is already configured.",
+      "reauth_successful": "The API key was updated.",
+      "reconfigure_successful": "The API key was updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Storage",
+        "description": "Radar frames are stored in this folder. Changing it does not move the frames already stored: the old folder is left as it is.",
+        "data": {
+          "storage_path": "Storage folder",
+          "size_cap_mb": "Size cap"
+        },
+        "data_description": {
+          "storage_path": "Absolute path. Keep it outside /config so backups stay small.",
+          "size_cap_mb": "When the frames go over this size, the oldest ones are removed first."
+        }
+      }
+    },
+    "error": {
+      "path_not_absolute": "The path must be absolute (start with /).",
+      "path_not_writable": "This folder cannot be created or written to."
+    }
+  },
+  "issues": {
+    "api_key_expiring": {
+      "title": "Météo-France API key expires soon",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Météo-France API key expires soon",
+            "description": "The Météo-France API key expires on {expiry}. Generate a new key on the Météo-France portal, then submit to enter it. Without a new key, the radar stops updating on that day."
+          }
+        },
+        "abort": {
+          "entry_not_found": "The Météo-France Radar integration is no longer set up."
+        }
+      }
     }
   }
 }
